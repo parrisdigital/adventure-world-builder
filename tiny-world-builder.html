@@ -430,6 +430,55 @@
     padding-top: 0;
     border-top: none;
   }
+  .welcome-card {
+    width: min(620px, calc(100vw - 32px));
+    padding: 24px;
+    gap: 14px;
+  }
+  .welcome-title {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(28px, 6vw, 48px);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+  }
+  .welcome-title em {
+    font-style: italic;
+    color: #a08454;
+  }
+  .welcome-copy {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.55;
+    margin: 0;
+  }
+  .welcome-tips {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .welcome-tip {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fffaf0;
+    padding: 10px;
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--muted);
+  }
+  .welcome-tip strong {
+    display: block;
+    color: var(--ink);
+    margin-bottom: 3px;
+  }
+  .welcome-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 4px;
+  }
+  @media (max-width: 600px) {
+    .welcome-tips { grid-template-columns: 1fr; }
+  }
   #cloud-layer {
     position: fixed;
     inset: -12%;
@@ -478,9 +527,27 @@
     <button class="btn" id="export" title="Download as JSON">⇩ Export</button>
     <button class="btn" id="import" title="Load a JSON file">⇧ Import</button>
     <input type="file" id="import-file" accept=".json,application/json" hidden />
-    <button class="btn" id="generate" title="Generate world from a prompt">✨ Generate</button>
+    <button class="btn" id="generate" title="Generate world from a prompt" hidden>✨ Generate</button>
     <button class="btn" id="render-settings" title="Render settings">Render</button>
     <button class="btn" id="clear">Clear</button>
+  </div>
+
+  <div id="welcome-modal" class="modal">
+    <form class="modal-card welcome-card" role="dialog" aria-labelledby="welcome-title" onsubmit="return false">
+      <div class="modal-head">
+        <strong id="welcome-title" class="welcome-title">Tiny World <em>Builder</em></strong>
+        <button class="modal-close" id="welcome-close" title="Close" aria-label="Close welcome dialog">×</button>
+      </div>
+      <p class="welcome-copy">Build a little voxel world by painting terrain, dropping houses, drawing fences, planting crops, and shaping paths.</p>
+      <div class="welcome-tips" aria-label="Quick tips">
+        <div class="welcome-tip"><strong>Click to build</strong>Select a tool, then click any tile to place it.</div>
+        <div class="welcome-tip"><strong>Move the camera</strong>Drag to orbit, hold Space or right-drag to pan, scroll to zoom.</div>
+        <div class="welcome-tip"><strong>Keep going</strong>Use Reset, Clear, Export, Import, and Render from the top bar.</div>
+      </div>
+      <div class="welcome-actions">
+        <button class="btn" id="welcome-start" type="button">Start building</button>
+      </div>
+    </form>
   </div>
 
   <div id="gen-modal" class="modal" hidden>
@@ -661,9 +728,30 @@
     objectOpacity: 'tinyworld:render:objectOpacity',
     version: 'tinyworld:render:version',
   };
-  const RENDER_SETTINGS_VERSION = '6';
+  const RENDER_SETTINGS_VERSION = '8';
+  const RENDER_DEFAULTS = {
+    post: '0',
+    resolution: '1',
+    saturation: '1',
+    contrast: '1',
+    brightness: '1',
+    vignette: '0.04',
+    warmth: '0',
+    shadow: 'high',
+    lighting: '1',
+    visibleDistance: '2',
+    visibleSize: '8',
+    clouds: '0',
+    cloudSpeed: '0.35',
+    tiltBlur: '5',
+    tiltFocus: '15',
+    ghostOpacity: '0.22',
+    floorOpacity: '0.38',
+    objectOpacity: '0.6',
+  };
   if (localStorage.getItem(RENDER_LS.version) !== RENDER_SETTINGS_VERSION) {
     for (const key of Object.values(RENDER_LS)) localStorage.removeItem(key);
+    for (const [key, value] of Object.entries(RENDER_DEFAULTS)) localStorage.setItem(RENDER_LS[key], value);
     localStorage.setItem(RENDER_LS.version, RENDER_SETTINGS_VERSION);
   }
 
@@ -679,14 +767,14 @@
   const BASE_DPR_CAP = window.matchMedia && window.matchMedia('(max-width: 800px)').matches ? 1.25 : 1.5;
   let postProcessingEnabled = localStorage.getItem(RENDER_LS.post) === '1';
   let renderResolutionScale = storedNumber(RENDER_LS.resolution, 1, 0.55, 1);
-  let renderShadowQuality = localStorage.getItem(RENDER_LS.shadow) || 'balanced';
+  let renderShadowQuality = localStorage.getItem(RENDER_LS.shadow) || 'high';
   let renderLighting = storedNumber(RENDER_LS.lighting, 1, 0.5, 1.45);
   let renderVisibleDistance = Math.round(storedNumber(RENDER_LS.visibleDistance, 2, 1, 4));
   let renderVisibleSize = Math.round(storedNumber(RENDER_LS.visibleSize, 8, 8, 20));
   let renderCloudAmount = storedNumber(RENDER_LS.clouds, 0, 0, 1);
   let renderCloudSpeed = storedNumber(RENDER_LS.cloudSpeed, 0.35, 0, 1);
-  let renderTiltBlur = storedNumber(RENDER_LS.tiltBlur, 3.5, 0, 8);
-  let renderTiltFocus = storedNumber(RENDER_LS.tiltFocus, 32, 15, 80);
+  let renderTiltBlur = storedNumber(RENDER_LS.tiltBlur, 5, 0, 8);
+  let renderTiltFocus = storedNumber(RENDER_LS.tiltFocus, 15, 15, 80);
   let renderGhostOpacity = storedNumber(RENDER_LS.ghostOpacity, 0.22, 0.05, 1);
   let renderFloorOpacity = storedNumber(RENDER_LS.floorOpacity, 0.38, 0.1, 1);
   let renderObjectOpacity = storedNumber(RENDER_LS.objectOpacity, 0.6, 0, 1);
@@ -834,8 +922,13 @@
   resizePostTarget(window.innerWidth, window.innerHeight);
 
   // -------- cameras (orthographic + soft + perspective) --------
-  let viewSize = 7.5;
-  let cameraMode = 'soft'; // 'ortho' | 'soft' | 'perspective'
+  const DEFAULT_VIEW_SIZE = 6.2;
+  const DEFAULT_CAMERA_MODE = 'soft';
+  const DEFAULT_AZIMUTH = Math.PI * 0.32;
+  const DEFAULT_POLAR = Math.PI * 0.34;
+  const DEFAULT_TARGET = new THREE.Vector3(0.35, 0, 0.15);
+  let viewSize = DEFAULT_VIEW_SIZE;
+  let cameraMode = DEFAULT_CAMERA_MODE; // 'ortho' | 'soft' | 'perspective'
 
   const aspect0 = window.innerWidth / window.innerHeight;
   const orthoCam = new THREE.OrthographicCamera(
@@ -850,9 +943,9 @@
   let camera = softCam;
 
   // orbit state
-  let azimuth = Math.PI * 0.35;   // around Y - slightly rotated for better initial view
-  let polar   = Math.PI * 0.28;   // from +Y axis - slightly lower for more isometric feel
-  const target = new THREE.Vector3(0, 0, 0);
+  let azimuth = DEFAULT_AZIMUTH;   // around Y
+  let polar   = DEFAULT_POLAR;     // from +Y axis
+  const target = DEFAULT_TARGET.clone();
   const panRight = new THREE.Vector3();
   const panForward = new THREE.Vector3();
 
@@ -3894,7 +3987,7 @@
 
   // -------- tools --------
   const TOOLS = [
-    { id: 'auto',   label: 'Auto',   auto: true, color: '#3a72c8', shortcut: '0', group: 'tools' },
+    { id: 'auto',   label: 'Auto',   auto: true, color: '#3a72c8', shortcut: '0', group: 'tools', hidden: true },
     { id: 'grass',  label: 'Grass',  terrain: 'grass', color: '#9ec74b', shortcut: '1', group: 'terrain' },
     { id: 'path',   label: 'Path',   terrain: 'path',  color: '#e8d5a8', shortcut: '2', group: 'terrain' },
     { id: 'dirt',   label: 'Dirt',   terrain: 'dirt',  color: '#5a3b27', shortcut: '3', group: 'terrain' },
@@ -3946,6 +4039,7 @@
     const bar = document.getElementById('toolbar');
     bar.innerHTML = '';
     TOOLS.forEach((t, i) => {
+      if (t.hidden) return;
       const btn = document.createElement('button');
       btn.className = 'tool' + (['grass', 'house', 'crop', 'erase'].includes(t.id) ? ' group-start' : '');
       btn.dataset.id = t.id;
@@ -4249,7 +4343,7 @@
       e.preventDefault();
       return;
     }
-    const shortcutTool = TOOLS.find(x => x.shortcut && x.shortcut.toLowerCase() === k);
+    const shortcutTool = TOOLS.find(x => !x.hidden && x.shortcut && x.shortcut.toLowerCase() === k);
     if (shortcutTool) {
       selectTool(shortcutTool);
       return;
@@ -4345,7 +4439,18 @@
     onResize();
   }
 
-  function doReset() { loadInitialScene(); }
+  function resetCameraDefaults() {
+    viewSize = DEFAULT_VIEW_SIZE;
+    azimuth = DEFAULT_AZIMUTH;
+    polar = DEFAULT_POLAR;
+    target.copy(DEFAULT_TARGET);
+    setCameraMode(DEFAULT_CAMERA_MODE);
+  }
+
+  function doReset() {
+    loadInitialScene();
+    resetCameraDefaults();
+  }
   function doClear() {
     const TILE_STAGGER = 0.022;
     for (let x = 0; x < GRID; x++)
@@ -4500,7 +4605,7 @@
     }
     resetBtn.addEventListener('click', () => {
       postProcessingEnabled = false;
-      setShadowQuality('balanced');
+      setShadowQuality('high');
       setRenderResolutionScale(1);
       setRenderVisibleDistance(2);
       setRenderVisibleSize(8);
@@ -4514,8 +4619,8 @@
       renderCloudAmount = 0;
       renderCloudSpeed = 0.35;
       applyCloudSettings();
-      renderTiltBlur = 3.5;
-      renderTiltFocus = 32;
+      renderTiltBlur = 5;
+      renderTiltFocus = 15;
       applyTiltShiftSettings();
       renderGhostOpacity = 0.22;
       renderFloorOpacity = 0.38;
@@ -5399,9 +5504,7 @@
 
     suppressSave = false;
 
-    if (data.cameraMode === 'perspective' && cameraMode !== 'perspective') {
-      togglePerspective();
-    }
+    resetCameraDefaults();
     if (data.toolId) {
       const tool = TOOLS.find(t => t.id === data.toolId);
       if (tool) selectTool(tool);
@@ -5420,10 +5523,29 @@
     return applyState(data);
   }
 
+  // -------- welcome dialog --------
+  function initWelcomeDialog() {
+    const modal = document.getElementById('welcome-modal');
+    const closeBtn = document.getElementById('welcome-close');
+    const startBtn = document.getElementById('welcome-start');
+    if (!modal) return;
+    function close() { modal.hidden = true; }
+    closeBtn.addEventListener('click', close);
+    startBtn.addEventListener('click', close);
+    modal.addEventListener('click', e => {
+      if (e.target === modal) close();
+    });
+    window.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && !modal.hidden) close();
+    });
+  }
+
   // -------- boot --------
+  initWelcomeDialog();
   buildToolbar();
   selectTool(DEFAULT_TOOL);
   if (!loadState()) loadInitialScene();
+  resetCameraDefaults();
   ensureGhostBoardsAroundTarget();
   onResize();
   requestAnimationFrame(animate);
