@@ -190,6 +190,75 @@
     pointer-events: none;
   }
 
+  /* Audio panel — persistent floating control, sits above the toolbar so it
+     never overlaps the tool buttons on either desktop or mobile widths. */
+  .audio-panel {
+    position: fixed;
+    bottom: 140px;
+    right: 14px;
+    z-index: 40;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 200px;
+    backdrop-filter: blur(4px);
+  }
+  @media (max-width: 800px) {
+    .audio-panel {
+      bottom: 160px;
+      right: 8px;
+      min-width: 170px;
+      padding: 6px 8px;
+    }
+  }
+  .audio-row {
+    display: grid;
+    grid-template-columns: 26px 1fr auto;
+    align-items: center;
+    gap: 8px;
+  }
+  .audio-row .audio-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .audio-row input[type="range"] {
+    width: 100%;
+    accent-color: var(--ink);
+  }
+  .audio-mute {
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    color: var(--ink);
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .audio-mute svg {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .audio-mute .ic-off { display: none; }
+  .audio-mute.muted { color: var(--muted); }
+  .audio-mute.muted .ic-on { display: none; }
+  .audio-mute.muted .ic-off { display: block; }
+
   /* Custom tooltip with 500ms hover delay, no delay on hide. */
   [data-tooltip] { position: relative; }
   [data-tooltip]::after {
@@ -907,6 +976,25 @@
   <div class="unsaved-banner" id="unsaved-banner" hidden>
     <span class="dot" aria-hidden="true"></span>
     <span id="unsaved-banner-text">Areas outside your 8×8 grid aren't saved</span>
+  </div>
+
+  <div id="audio-panel" class="audio-panel" role="group" aria-label="Sound controls">
+    <div class="audio-row">
+      <button type="button" class="audio-mute" id="audio-music-mute" data-tooltip="Mute music" aria-label="Mute music">
+        <svg class="ic-on" viewBox="0 0 24 24"><path d="M9 18V6l11-3v12"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="15" r="3"/></svg>
+        <svg class="ic-off" viewBox="0 0 24 24"><path d="M9 18V6l11-3v12"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="15" r="3"/><path d="M3 3l18 18"/></svg>
+      </button>
+      <input type="range" id="audio-music-vol" min="0" max="100" step="1" aria-label="Music volume" />
+      <span class="audio-label">Music</span>
+    </div>
+    <div class="audio-row">
+      <button type="button" class="audio-mute" id="audio-sfx-mute" data-tooltip="Mute SFX" aria-label="Mute SFX">
+        <svg class="ic-on" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        <svg class="ic-off" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M22 9l-6 6"/><path d="M16 9l6 6"/></svg>
+      </button>
+      <input type="range" id="audio-sfx-vol" min="0" max="100" step="1" aria-label="SFX volume" />
+      <span class="audio-label">SFX</span>
+    </div>
   </div>
 
   <div class="controls">
@@ -4389,6 +4477,7 @@
   const rippleTileOwner = new Map(); // tile -> active rippleAnim entry
   function triggerRipple(originX, originZ, mass) {
     if (!mass || mass < 2) return;
+    if (typeof playSfx === 'function') playSfx('ripple');
     const radius = Math.min(3, Math.max(1, Math.round(mass / 3)));
     const baseAmp = Math.min(0.12, 0.012 * mass);
     for (const key in cellMeshes) {
@@ -4464,7 +4553,14 @@
           const gz = a.obj.userData.gz;
           const ox = (typeof gx === 'number') ? gx : Math.round(a.obj.position.x + GRID / 2 - 0.5);
           const oz = (typeof gz === 'number') ? gz : Math.round(a.obj.position.z + GRID / 2 - 0.5);
-          triggerRipple(ox, oz, mass);
+          if (mass >= 2) {
+            triggerRipple(ox, oz, mass); // also plays 'ripple' SFX
+          } else if (typeof playSfx === 'function') {
+            // Light objects (tufts, crops) and tiles — quiet land thump.
+            // The 'land' channel has its own slower clock so cascades stay
+            // tasteful instead of forming a wall of foley.
+            playSfx('land', 0.35);
+          }
         }
         dropAnims.splice(i, 1);
       }
@@ -5924,6 +6020,9 @@
       applyAutoTool(x, z);
       return;
     }
+    // Audible feedback for any user-initiated placement / erase. The
+    // per-group rate limiter inside playSfx keeps drag-painting sane.
+    if (typeof playSfxForTool === 'function') playSfxForTool(selectedTool);
     // Ensure world row exists
     if (!world[x]) world[x] = [];
     const cell = world[x][z] || { terrain: 'grass', terrainFloors: 1, kind: null, floors: 1, buildingType: null, fenceSide: null, extras: [] };
@@ -6522,6 +6621,7 @@
       az: DEFAULT_AZIMUTH, po: DEFAULT_POLAR,
     };
     homeTween = { start, end, t: 0, dur: 0.55 };
+    if (typeof playSfx === 'function') playSfx('whoosh');
   }
   function tickHomeTween(dt) {
     if (!homeTween) return;
@@ -6541,6 +6641,7 @@
   function doReset() {
     loadInitialScene();
     resetCameraDefaults();
+    if (typeof playSfx === 'function') playSfx('whoosh');
     if (typeof fireWebhook === 'function') fireWebhook('world.reset', {});
   }
 
@@ -6569,6 +6670,7 @@
     });
   })();
   function doClear() {
+    if (typeof playSfx === 'function') playSfx('whoosh');
     const TILE_STAGGER = 0.022;
     for (let x = 0; x < GRID; x++)
       for (let z = 0; z < GRID; z++)
@@ -6788,6 +6890,188 @@
       if (e.key === 'Escape' && !modal.hidden) modal.hidden = true;
     });
     syncControls();
+  })();
+
+  // -------- audio --------
+  // Music: pick one of two horizon themes at random per session and loop it
+  // forever — never restart on the second pick so users genuinely hear A or
+  // B for the whole visit. Music can't auto-play before a user gesture, so
+  // we defer the first .play() to the next pointerdown/keydown.
+  //
+  // SFX: small pools of foley clips. playSfx(group) clones the chosen node
+  // so overlapping plays don't truncate each other. A per-group min-gap
+  // prevents drag-painting from machine-gunning sounds.
+  const AUDIO_LS = {
+    music:       'tinyworld:audio:music',
+    sfx:         'tinyworld:audio:sfx',
+    musicMuted:  'tinyworld:audio:music-muted',
+    sfxMuted:    'tinyworld:audio:sfx-muted',
+  };
+  function storedAudio(key, fallback, min, max) {
+    const v = parseFloat(localStorage.getItem(key));
+    if (!isFinite(v)) return fallback;
+    return Math.max(min, Math.min(max, v));
+  }
+  let audioMusicVolume = storedAudio(AUDIO_LS.music, 0.55, 0, 1);
+  let audioSfxVolume   = storedAudio(AUDIO_LS.sfx,   0.7,  0, 1);
+  let audioMusicMuted  = localStorage.getItem(AUDIO_LS.musicMuted) === '1';
+  let audioSfxMuted    = localStorage.getItem(AUDIO_LS.sfxMuted)   === '1';
+
+  const SOUNDS_BASE = 'sounds/';
+  const MUSIC_TRACKS = ['music-horizon-1.mp3', 'music-horizon-2.mp3'];
+  const SFX_GROUPS = {
+    rustle: ['foley-rustle-1.mp3', 'foley-rustle-2.mp3', 'foley-rustle-3.mp3'],
+    knock:  ['foley-knock-jingle-1.mp3', 'foley-knock-jingle-2.mp3'],
+    whoosh: ['foley-whoosh-1.mp3', 'foley-whoosh-2.mp3'],
+    ripple: ['foley-digital ripple activity.mp3'],
+    // 'land' reuses the rustle pool but has its own clock + a longer gap,
+    // so cascade landings (boot/reset/clear) thin out instead of forming
+    // a wall of foley over the rustle channel.
+    land:   ['foley-rustle-1.mp3', 'foley-rustle-2.mp3', 'foley-rustle-3.mp3'],
+  };
+  // Minimum time (ms) between two plays of the same group. Drag-painting
+  // tiles must not produce a machine-gun of identical foley.
+  const SFX_MIN_GAP = { rustle: 70, knock: 90, whoosh: 110, ripple: 240, land: 180 };
+  const sfxPool = {};
+  for (const g of Object.keys(SFX_GROUPS)) {
+    sfxPool[g] = SFX_GROUPS[g].map(name => {
+      const a = new Audio(SOUNDS_BASE + encodeURIComponent(name));
+      a.preload = 'auto';
+      a.crossOrigin = 'anonymous';
+      return a;
+    });
+  }
+  const sfxLastPlay = { rustle: 0, knock: 0, whoosh: 0, ripple: 0, land: 0 };
+
+  function playSfx(group, scale) {
+    if (audioSfxMuted) return;
+    const now = performance.now();
+    if (now - (sfxLastPlay[group] || 0) < (SFX_MIN_GAP[group] || 80)) return;
+    sfxLastPlay[group] = now;
+    const pool = sfxPool[group];
+    if (!pool || !pool.length) return;
+    const base = pool[Math.floor(Math.random() * pool.length)];
+    // cloneNode keeps the preloaded src reference; cheaper than `new Audio`.
+    const node = base.cloneNode();
+    node.volume = Math.max(0, Math.min(1, audioSfxVolume * (scale || 1)));
+    // Drop the clone after it finishes so we don't leak HTMLAudioElements.
+    node.addEventListener('ended', () => { node.src = ''; }, { once: true });
+    const p = node.play();
+    if (p && typeof p.catch === 'function') p.catch(() => {});
+  }
+
+  function playSfxForTool(tool) {
+    if (!tool || tool.auto) return;
+    if (tool.erase) { playSfx('whoosh'); return; }
+    if (tool.kind === 'house' || tool.kind === 'fence') { playSfx('knock'); return; }
+    if (tool.kind || tool.terrain) { playSfx('rustle'); return; }
+  }
+
+  let musicAudio = null;
+  let musicStarted = false;
+  let musicPickedTrack = null;
+  function startMusicIfNeeded() {
+    if (musicStarted || audioMusicMuted) return;
+    musicStarted = true;
+    musicPickedTrack = MUSIC_TRACKS[Math.floor(Math.random() * MUSIC_TRACKS.length)];
+    musicAudio = new Audio(SOUNDS_BASE + musicPickedTrack);
+    musicAudio.loop = true;
+    musicAudio.volume = audioMusicVolume;
+    musicAudio.crossOrigin = 'anonymous';
+    const p = musicAudio.play();
+    if (p && typeof p.catch === 'function') {
+      p.catch(() => {
+        // Autoplay still blocked — let the next gesture try again.
+        musicStarted = false;
+        musicAudio = null;
+      });
+    }
+  }
+  // Lazily start music on the first user gesture (any pointer or key event).
+  function armMusicAutostart() {
+    const handler = () => {
+      window.removeEventListener('pointerdown', handler);
+      window.removeEventListener('keydown', handler);
+      startMusicIfNeeded();
+    };
+    window.addEventListener('pointerdown', handler, { passive: true });
+    window.addEventListener('keydown', handler);
+  }
+  armMusicAutostart();
+
+  function applyAudioState() {
+    if (musicAudio) musicAudio.volume = audioMusicMuted ? 0 : audioMusicVolume;
+    // SFX volume is applied per-play; nothing to update here.
+    localStorage.setItem(AUDIO_LS.music, String(audioMusicVolume));
+    localStorage.setItem(AUDIO_LS.sfx, String(audioSfxVolume));
+    localStorage.setItem(AUDIO_LS.musicMuted, audioMusicMuted ? '1' : '0');
+    localStorage.setItem(AUDIO_LS.sfxMuted, audioSfxMuted ? '1' : '0');
+  }
+  function setMusicVolume(v) {
+    audioMusicVolume = Math.max(0, Math.min(1, v));
+    if (!audioMusicMuted && !musicStarted) startMusicIfNeeded();
+    applyAudioState();
+  }
+  function setSfxVolume(v) {
+    audioSfxVolume = Math.max(0, Math.min(1, v));
+    applyAudioState();
+  }
+  function setMusicMuted(m) {
+    audioMusicMuted = !!m;
+    if (audioMusicMuted && musicAudio) {
+      musicAudio.pause();
+    } else if (!audioMusicMuted) {
+      if (!musicStarted) startMusicIfNeeded();
+      else if (musicAudio) musicAudio.play().catch(() => {});
+    }
+    applyAudioState();
+  }
+  function setSfxMuted(m) {
+    audioSfxMuted = !!m;
+    applyAudioState();
+  }
+
+  // Audio panel wiring — sliders + mute toggles. Permanent bottom-right panel.
+  (function setupAudioPanel() {
+    const musicVol = document.getElementById('audio-music-vol');
+    const sfxVol   = document.getElementById('audio-sfx-vol');
+    const musicMute = document.getElementById('audio-music-mute');
+    const sfxMute   = document.getElementById('audio-sfx-mute');
+    if (!musicVol || !sfxVol || !musicMute || !sfxMute) return;
+
+    function syncMuteUi() {
+      musicMute.classList.toggle('muted', audioMusicMuted);
+      sfxMute.classList.toggle('muted', audioSfxMuted);
+    }
+    function syncValues() {
+      musicVol.value = Math.round(audioMusicVolume * 100);
+      sfxVol.value   = Math.round(audioSfxVolume   * 100);
+      syncMuteUi();
+    }
+    syncValues();
+
+    musicVol.addEventListener('input', () => {
+      setMusicVolume(parseFloat(musicVol.value) / 100);
+      if (audioMusicVolume > 0 && audioMusicMuted) { setMusicMuted(false); syncMuteUi(); }
+    });
+    sfxVol.addEventListener('input', () => {
+      setSfxVolume(parseFloat(sfxVol.value) / 100);
+      if (audioSfxVolume > 0 && audioSfxMuted) { setSfxMuted(false); syncMuteUi(); }
+    });
+    // Brief audible preview on SFX slider release so the user can hear the
+    // new level without having to place a tile.
+    sfxVol.addEventListener('change', () => {
+      if (!audioSfxMuted) playSfx('rustle');
+    });
+
+    musicMute.addEventListener('click', () => {
+      setMusicMuted(!audioMusicMuted);
+      syncMuteUi();
+    });
+    sfxMute.addEventListener('click', () => {
+      setSfxMuted(!audioSfxMuted);
+      syncMuteUi();
+    });
   })();
 
   // -------- chimney smoke --------
