@@ -906,7 +906,7 @@
 
   <div class="unsaved-banner" id="unsaved-banner" hidden>
     <span class="dot" aria-hidden="true"></span>
-    <span>Areas outside your 8×8 grid aren't saved</span>
+    <span id="unsaved-banner-text">Areas outside your 8×8 grid aren't saved</span>
   </div>
 
   <div class="controls">
@@ -1123,7 +1123,7 @@
         <strong id="confirm-reset-title">Reset to the starter world?</strong>
         <button class="modal-close" id="confirm-reset-close" title="Close" aria-label="Close">×</button>
       </div>
-      <p class="confirm-copy">This replaces your current build with the preset village. You'll lose anything you've placed on the 8×8 grid.</p>
+      <p class="confirm-copy" id="confirm-reset-copy">This replaces your current build with the preset village. You'll lose anything you've placed on the 8×8 grid.</p>
       <div class="modal-foot confirm-actions">
         <button class="btn confirm-cancel" id="confirm-reset-cancel" type="button">Cancel</button>
         <button class="btn confirm-destructive" id="confirm-reset-ok" type="button">Reset world</button>
@@ -6382,8 +6382,35 @@
   function setHomeGridSize(n, opts) {
     const skipRebuild = !!(opts && opts.skipRebuild);
     if (!HOME_GRID_OPTIONS.includes(n) || n === GRID) return;
+
+    // Backup the full pre-resize state to localStorage so the user can
+    // recover if a resize ever drops something we didn't preserve.
+    // Stored under a dedicated key separate from the live save.
+    try {
+      const backupCells = [];
+      const limit = HOME_GRID_MAX;
+      for (let x = 0; x < limit; x++) {
+        if (!world[x]) continue;
+        for (let z = 0; z < limit; z++) {
+          const c = world[x][z];
+          if (!c) continue;
+          const entry = serializeCell(x, z, c);
+          if (entry) backupCells.push(entry);
+        }
+      }
+      localStorage.setItem('tinyworld:home-grid:backup', JSON.stringify({
+        v: STORAGE_VERSION,
+        savedAt: Date.now(),
+        fromGrid: GRID,
+        toGrid: n,
+        gridSize: GRID,
+        cells: backupCells,
+      }));
+    } catch (_) {}
+
     GRID = n;
     try { localStorage.setItem('tinyworld:home-grid', String(GRID)); } catch (_) {}
+    updateUnsavedCopyForGrid();
 
     // Drop every ghost board — their world positions are anchored to GRID.
     for (const [key, board] of ghostBoards) {
@@ -6406,8 +6433,8 @@
 
     if (skipRebuild) return;
 
-    // Rebuild every home cell from the surviving world data.
     suppressSave = true;
+    // Rebuild every home cell from the surviving world data.
     for (let x = 0; x < GRID; x++) {
       for (let z = 0; z < GRID; z++) {
         const c = world[x][z];
@@ -6430,6 +6457,39 @@
         }
       }
     }
+    // Re-render any user-edited cells that now (or still) live OUTSIDE
+    // the home grid. Without this, shrinking the grid would hide tiles
+    // the user placed at higher indices, and growing wouldn't refresh
+    // the outside cells that still exist past the new edge. The
+    // grayscale 'outside home' look is applied automatically by setCell.
+    for (let x = 0; x < HOME_GRID_MAX; x++) {
+      if (!world[x]) continue;
+      for (let z = 0; z < HOME_GRID_MAX; z++) {
+        if (x < GRID && z < GRID) continue;
+        const c = world[x][z];
+        if (!c) continue;
+        // Only re-render cells the user actually placed something on —
+        // default-grass cells stay invisible to the cellMeshes layer
+        // (ghost boards handle the procedural fill).
+        if (!serializeCell(x, z, c)) continue;
+        setCell(x, z, {
+          terrain: c.terrain || 'grass',
+          terrainFloors: c.terrainFloors || 1,
+          kind: c.kind || null,
+          floors: c.floors || 1,
+          buildingType: c.buildingType || null,
+          fenceSide: c.fenceSide || null,
+          rotationY: c.rotationY || 0,
+          offsetX: c.offsetX || 0,
+          offsetZ: c.offsetZ || 0,
+          animate: false,
+          forceTile: true,
+        });
+        if (Array.isArray(c.extras) && c.extras.length && typeof renderCellExtras === 'function') {
+          renderCellExtras(x, z);
+        }
+      }
+    }
     suppressSave = false;
 
     // Re-create ghost boards around the freshly-sized home.
@@ -6438,6 +6498,16 @@
     resetCameraDefaults();
     saveState();
   }
+
+  // Keep the unsaved-areas banner + reset confirm copy in sync with
+  // the current home grid size. Called on init and after every resize.
+  function updateUnsavedCopyForGrid() {
+    const bannerText = document.getElementById('unsaved-banner-text');
+    if (bannerText) bannerText.textContent = `Areas outside your ${GRID}×${GRID} grid aren't saved`;
+    const confirmCopy = document.getElementById('confirm-reset-copy');
+    if (confirmCopy) confirmCopy.textContent = `This replaces your current build with the preset village. You'll lose anything you've placed on the ${GRID}×${GRID} grid.`;
+  }
+  updateUnsavedCopyForGrid();
 
   // Smoothly tween the camera target/zoom back to the home 8x8 grid
   // without touching world data — used by the Home button.
