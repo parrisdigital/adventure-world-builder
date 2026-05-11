@@ -214,8 +214,8 @@
     overflow-x: auto;
   }
   .tool {
-    width: 60px;
-    height: 64px;
+    width: 68px;
+    height: 78px;
     border: 1px solid transparent;
     border-radius: 12px;
     background: transparent;
@@ -224,13 +224,14 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 5px;
+    gap: 3px;
     font-family: inherit;
     font-size: 11px;
     color: var(--muted);
     font-weight: 500;
     transition: background 0.12s, color 0.12s, border-color 0.12s, transform 0.08s;
     flex-shrink: 0;
+    padding: 4px 2px;
   }
   .tool:hover { background: var(--line-soft); color: var(--ink); }
   .tool.active {
@@ -256,6 +257,14 @@
     box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.14), 0 1px 2px rgba(0, 0, 0, 0.06);
     position: relative;
     overflow: hidden;
+  }
+  .tool .tool-thumb {
+    width: 48px;
+    height: 48px;
+    display: block;
+    pointer-events: none;
+    /* Crisp pixel-accurate downsample for the WebGL bitmap. */
+    image-rendering: -webkit-optimize-contrast;
   }
   .tool .swatch.eraser {
     background: repeating-linear-gradient(45deg, #e8e3d6, #e8e3d6 3px, #d6cdb8 3px, #d6cdb8 6px) !important;
@@ -808,8 +817,9 @@
     .controls { top: 20px; right: 20px; }
     .brand { top: 20px; left: 20px; }
     .toolbar { bottom: 16px; padding: 6px; gap: 2px; }
-    .tool { width: 52px; height: 56px; font-size: 10px; }
+    .tool { width: 60px; height: 70px; font-size: 10px; padding: 3px 2px; }
     .tool .swatch { width: 22px; height: 22px; }
+    .tool .tool-thumb { width: 42px; height: 42px; }
     .unsaved-banner { bottom: 90px; font-size: 11.5px; padding: 7px 12px 7px 10px; }
   }
   @media (hover: none), (pointer: coarse) {
@@ -4614,19 +4624,216 @@
   let autoPlacementsSinceRefresh = AUTO_REFRESH_EVERY;
   let autoSuggestionSnapshot = '';
 
+  // -------- toolbar 3D thumbnails --------
+  // Each tool button gets a mini 3D render of its object/terrain via a
+  // shared off-DOM renderer. On hover the camera orbits in place; on leave
+  // it eases back to the resting angle.
+  const THUMB_BASE_ANGLE = Math.PI / 4;
+  const THUMB_SIZE = 96;
+  let thumbRenderer = null;
+  const thumbScenes = new Map();      // toolId -> { scene, camera, canvas, ctx, angle, baseAngle, returning }
+  const hoverThumbs = new Set();
+  let thumbTickRAF = 0;
+  let thumbTickLast = 0;
+
+  function ensureThumbRenderer() {
+    if (thumbRenderer) return thumbRenderer;
+    thumbRenderer = new THREE.WebGLRenderer({
+      alpha: true,
+      antialias: true,
+      preserveDrawingBuffer: true,
+      powerPreference: 'low-power',
+    });
+    thumbRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    thumbRenderer.setSize(THUMB_SIZE, THUMB_SIZE, false);
+    thumbRenderer.outputEncoding = THREE.sRGBEncoding;
+    return thumbRenderer;
+  }
+
+  function makeThumbObject(tool) {
+    const k = tool.kind;
+    if (!k) return null;
+    if (k === 'tree')      return makeTree();
+    if (k === 'rock')      return makeRock({ n: false, s: false, e: false, w: false }, 1, 0, 0);
+    if (k === 'bridge')    return makeBridge('x');
+    if (k === 'tuft')      return makeTuft();
+    if (k === 'crop')      return makeCrop();
+    if (k === 'corn')      return makeCorn();
+    if (k === 'wheat')     return makeWheat();
+    if (k === 'pumpkin')   return makePumpkin();
+    if (k === 'carrot')    return makeCarrot();
+    if (k === 'sunflower') return makeSunflower();
+    if (k === 'fence')     return makeFence('n', 1);
+    if (k === 'house') {
+      const v = tool.activeVariant;
+      const bType = v && v.buildingType;
+      if (bType === 'manor')      return makeManor(2);
+      if (bType === 'tower')      return makeStoneTower(2);
+      if (bType === 'turret')     return makeTurret(2);
+      if (bType === 'skyscraper') return makeSkyscraper(4);
+      return makeHouse(2);
+    }
+    return null;
+  }
+
+  function thumbTerrainFor(tool) {
+    if (tool.terrain) return tool.terrain;
+    if (tool.kind === 'bridge') return 'water';
+    if (CROP_KINDS && CROP_KINDS.has && CROP_KINDS.has(tool.kind)) return 'dirt';
+    return 'grass';
+  }
+
+  function buildToolThumb(tool, canvas) {
+    if (!window.THREE) return null;
+    ensureThumbRenderer();
+    const scene = new THREE.Scene();
+    scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+    const hemi = new THREE.HemisphereLight(0xffffff, 0xb39879, 0.6);
+    scene.add(hemi);
+    const sun = new THREE.DirectionalLight(0xffffff, 0.85);
+    sun.position.set(3, 6, 2);
+    scene.add(sun);
+
+    const tile = makeTile(thumbTerrainFor(tool), { path: {}, terrain: {} }, 0, 0, 1);
+    scene.add(tile);
+
+    const obj = makeThumbObject(tool);
+    if (obj) {
+      if (tool.kind && tool.kind !== 'house' && tool.kind !== 'fence' && tool.kind !== 'rock') {
+        addEnhancementBits(obj, tool.kind, 1);
+      }
+      obj.position.y = TOP_H;
+      scene.add(obj);
+    }
+    // Strip shadows — the thumb renderer has no shadow maps.
+    scene.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } });
+
+    const cam = new THREE.OrthographicCamera(-1.3, 1.3, 1.3, -1.3, 0.1, 30);
+    const ctx = canvas.getContext('2d');
+    const entry = {
+      scene, camera: cam, canvas, ctx,
+      angle: THUMB_BASE_ANGLE, baseAngle: THUMB_BASE_ANGLE, returning: false,
+    };
+    thumbScenes.set(tool.id, entry);
+    renderToolThumb(tool.id);
+    return entry;
+  }
+
+  function renderToolThumb(id) {
+    const t = thumbScenes.get(id);
+    if (!t || !thumbRenderer) return;
+    const r = 3.4;
+    t.camera.position.set(Math.cos(t.angle) * r, 2.4, Math.sin(t.angle) * r);
+    t.camera.lookAt(0, 0.4, 0);
+    thumbRenderer.setSize(THUMB_SIZE, THUMB_SIZE, false);
+    thumbRenderer.render(t.scene, t.camera);
+    const dpr = thumbRenderer.getPixelRatio();
+    const w = THUMB_SIZE * dpr;
+    const h = THUMB_SIZE * dpr;
+    if (t.canvas.width !== w || t.canvas.height !== h) {
+      t.canvas.width = w;
+      t.canvas.height = h;
+    }
+    t.ctx.clearRect(0, 0, t.canvas.width, t.canvas.height);
+    t.ctx.drawImage(thumbRenderer.domElement, 0, 0, t.canvas.width, t.canvas.height);
+  }
+
+  function startThumbHover(id) {
+    const t = thumbScenes.get(id);
+    if (!t) return;
+    t.returning = false;
+    hoverThumbs.add(id);
+    if (!thumbTickRAF) {
+      thumbTickLast = performance.now();
+      thumbTickRAF = requestAnimationFrame(tickThumbs);
+    }
+  }
+
+  function stopThumbHover(id) {
+    const t = thumbScenes.get(id);
+    if (!t) return;
+    hoverThumbs.delete(id);
+    // Keep ticking until the angle eases back to base.
+    t.returning = true;
+    if (!thumbTickRAF) {
+      thumbTickLast = performance.now();
+      thumbTickRAF = requestAnimationFrame(tickThumbs);
+    }
+  }
+
+  function tickThumbs(now) {
+    const dt = Math.min(0.05, (now - thumbTickLast) / 1000);
+    thumbTickLast = now;
+    let stillTicking = false;
+    for (const [id, t] of thumbScenes) {
+      if (hoverThumbs.has(id)) {
+        t.angle += dt * 1.6;
+        renderToolThumb(id);
+        stillTicking = true;
+      } else if (t.returning) {
+        const target = t.baseAngle;
+        const TAU = Math.PI * 2;
+        let delta = ((target - t.angle) % TAU + TAU) % TAU;
+        if (delta > Math.PI) delta -= TAU;
+        const step = Math.sign(delta) * Math.min(Math.abs(delta), dt * 3.2);
+        t.angle += step;
+        if (Math.abs(delta) < 0.01) {
+          t.angle = target;
+          t.returning = false;
+        } else {
+          stillTicking = true;
+        }
+        renderToolThumb(id);
+      }
+    }
+    if (stillTicking) {
+      thumbTickRAF = requestAnimationFrame(tickThumbs);
+    } else {
+      thumbTickRAF = 0;
+    }
+  }
+
+  function refreshToolThumb(toolId) {
+    // Rebuild a thumb in place — used when a tool's active variant changes
+    // so the house thumb shows the chosen building type, etc.
+    const old = thumbScenes.get(toolId);
+    if (!old) return;
+    const tool = TOOLS.find(t => t.id === toolId);
+    if (!tool) return;
+    // Dispose the old scene geometry (materials are shared, leave them).
+    old.scene.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+    thumbScenes.delete(toolId);
+    buildToolThumb(tool, old.canvas);
+  }
+
   function buildToolbar() {
     const bar = document.getElementById('toolbar');
     bar.innerHTML = '';
+    thumbScenes.forEach(t => { try { t.scene.traverse(o => o.geometry && o.geometry.dispose()); } catch(_) {} });
+    thumbScenes.clear();
     TOOLS.forEach((t, i) => {
       if (t.hidden) return;
       const btn = document.createElement('button');
       btn.className = 'tool' + (['grass', 'house', 'crop', 'erase'].includes(t.id) ? ' group-start' : '');
       btn.dataset.id = t.id;
       btn.title = t.label + (t.shortcut ? ' (' + t.shortcut.toUpperCase() + ')' : '');
-      const swatch = document.createElement('div');
-      swatch.className = 'swatch' + (t.eraser ? ' eraser' : '') + (t.auto ? ' auto' : '');
-      if (!t.eraser && !t.auto) swatch.style.background = t.color;
-      btn.appendChild(swatch);
+
+      // Erase and Auto keep their CSS swatch — there is no meaningful 3D
+      // render for them. Everything else gets a mini 3D thumbnail.
+      if (t.eraser || t.auto) {
+        const swatch = document.createElement('div');
+        swatch.className = 'swatch' + (t.eraser ? ' eraser' : '') + (t.auto ? ' auto' : '');
+        btn.appendChild(swatch);
+      } else {
+        const canvas = document.createElement('canvas');
+        canvas.className = 'tool-thumb';
+        canvas.width = THUMB_SIZE;
+        canvas.height = THUMB_SIZE;
+        btn.appendChild(canvas);
+        // Defer build to next tick so the toolbar paints first.
+        setTimeout(() => buildToolThumb(t, canvas), 0);
+      }
+
       const lbl = document.createElement('span');
       lbl.textContent = t.label;
       btn.appendChild(lbl);
@@ -4642,6 +4849,15 @@
         btn.appendChild(chev);
       }
       btn.addEventListener('click', () => selectTool(t));
+      // Orbit on hover for tools that have a thumbnail.
+      if (!t.eraser && !t.auto) {
+        btn.addEventListener('pointerenter', e => {
+          if (e.pointerType === 'mouse') startThumbHover(t.id);
+        });
+        btn.addEventListener('pointerleave', e => {
+          if (e.pointerType === 'mouse') stopThumbHover(t.id);
+        });
+      }
       if (t === selectedTool) btn.classList.add('active');
       // Disable auto tool if no API key
       if (t.auto) {
@@ -4683,6 +4899,7 @@
         e.stopPropagation();
         tool.activeVariant = v;
         renderFlyout(el, tool);
+        if (typeof refreshToolThumb === 'function') refreshToolThumb(tool.id);
       });
       el.appendChild(item);
     });
@@ -5004,6 +5221,8 @@
   // keyboard shortcuts
   window.addEventListener('keydown', e => {
     if (shortcutTargetBlocked(e.target)) return;
+    // Never swallow OS-level keystrokes like Cmd+R (reload), Ctrl+R, Cmd+F, etc.
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
     const k = e.key.toLowerCase();
     if (e.code === 'Space') {
       spaceDown = true;
@@ -5015,8 +5234,7 @@
       selectTool(shortcutTool);
       return;
     }
-    if (k === 'r') confirmReset();
-    else if (k === 'c') doClear();
+    if (k === 'c') doClear();
     else if (k === 'p' || k === 'i') togglePerspective();
     else if (e.key === 'ArrowLeft') { e.preventDefault(); panCameraByCells(-1, 0); }
     else if (e.key === 'ArrowRight') { e.preventDefault(); panCameraByCells(1, 0); }
