@@ -167,6 +167,24 @@
   .btn.icon.on {
     box-shadow: inset 0 0 0 1px #d8c79e, 0 0 0 3px rgba(217, 168, 43, 0.12);
   }
+  .btn.icon.locked {
+    position: relative;
+    color: var(--muted);
+    opacity: 0.78;
+  }
+  .btn.icon.locked::after {
+    content: '🔒';
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    font-size: 10px;
+    line-height: 1;
+    background: var(--panel);
+    border-radius: 50%;
+    padding: 2px 3px;
+    box-shadow: 0 0 0 1px var(--line);
+    pointer-events: none;
+  }
 
   /* Custom tooltip with 500ms hover delay, no delay on hide. */
   [data-tooltip] { position: relative; }
@@ -877,6 +895,9 @@
     </button>
     <button class="btn icon" id="account-btn" data-tooltip="My account" aria-label="My account" hidden>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    </button>
+    <button class="btn icon" id="auth-login-btn-top" data-tooltip="Sign in to unlock AI, settings & cloud saves" aria-label="Sign in">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/></svg>
     </button>
     <button class="btn icon" id="auth-logout-btn" data-tooltip="Sign out" aria-label="Sign out" hidden>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
@@ -6436,6 +6457,11 @@
     }
 
     openBtn.addEventListener('click', () => {
+      // Render settings are gated for anonymous users — prompt to sign in.
+      if (!window.__loggedIn && typeof window.__openLoginModal === 'function') {
+        window.__openLoginModal('Sign in to use render settings');
+        return;
+      }
       syncControls();
       modal.hidden = false;
     });
@@ -7436,7 +7462,14 @@
       if (msg) setStatus(msg, 'error');
     };
 
-    openBtn.addEventListener('click', open);
+    openBtn.addEventListener('click', () => {
+      // AI generation is gated for anonymous users.
+      if (!window.__loggedIn && typeof window.__openLoginModal === 'function') {
+        window.__openLoginModal('Sign in to use AI generation');
+        return;
+      }
+      open();
+    });
     closeBtn.addEventListener('click', close);
     modal.addEventListener('click', e => { if (e.target === modal) close(); });
     providerEl.addEventListener('change', loadProviderState);
@@ -7869,6 +7902,15 @@
   function initAuth() {
     const Auth = window.NetlifyAuth;
     if (!Auth) {
+      // No auth library — single-user local mode. Hide all auth UI
+      // and treat the user as logged in so settings/AI aren't
+      // permanently locked.
+      window.__loggedIn = true;
+      const ids = ['auth-login-btn-top', 'auth-logout-btn', 'account-btn', 'generate'];
+      for (const id of ids) {
+        const el = document.getElementById(id);
+        if (el && (id === 'auth-login-btn-top' || id === 'auth-logout-btn' || id === 'account-btn')) el.hidden = true;
+      }
       bootApp();
       return;
     }
@@ -7940,12 +7982,48 @@
       }
     }).catch(() => {});
 
+    // Tracks the live login state so gated controls can react to it.
+    // Anonymous users get the app, settings/AI/cloud are locked.
+    window.__loggedIn = false;
+    function setLoggedInState(isLoggedIn) {
+      window.__loggedIn = !!isLoggedIn;
+      logoutBtn.hidden = !isLoggedIn;
+      accountBtn.hidden = !isLoggedIn;
+      const loginBtnTop = document.getElementById('auth-login-btn-top');
+      if (loginBtnTop) loginBtnTop.hidden = !!isLoggedIn;
+      // Lock badges + tooltips for the gated buttons.
+      const settingsBtn = document.getElementById('render-settings');
+      const generateBtn = document.getElementById('generate');
+      if (settingsBtn) {
+        settingsBtn.classList.toggle('locked', !isLoggedIn);
+        settingsBtn.setAttribute('data-tooltip', isLoggedIn ? 'Render settings' : 'Sign in to use render settings');
+      }
+      if (generateBtn) {
+        generateBtn.hidden = !isLoggedIn;
+      }
+    }
+
+    function openLoginModal(reason) {
+      clearMessages();
+      modal.hidden = false;
+      const subtitle = modal.querySelector('.auth-subtitle');
+      if (subtitle && reason) subtitle.textContent = reason;
+      showForm('login');
+    }
+    // Expose to gated handlers outside this closure.
+    window.__openLoginModal = openLoginModal;
+
     function enterApp() {
       modal.hidden = true;
-      logoutBtn.hidden = false;
-      accountBtn.hidden = false;
+      setLoggedInState(true);
       bootApp();
       initAccountModal();
+    }
+
+    function enterAnonApp() {
+      modal.hidden = true;
+      setLoggedInState(false);
+      bootApp();
     }
 
     // Login
@@ -8044,16 +8122,17 @@
       }
     });
 
-    // Logout
+    // Logout — drop back to anonymous mode, no forced re-login.
     logoutBtn.addEventListener('click', async () => {
       try {
         await Auth.logout();
       } catch (_) {}
-      logoutBtn.hidden = true;
-      accountBtn.hidden = true;
-      modal.hidden = false;
-      showForm('login');
+      setLoggedInState(false);
     });
+
+    // Top-bar Sign In button opens the login modal.
+    const topLoginBtn = document.getElementById('auth-login-btn-top');
+    if (topLoginBtn) topLoginBtn.addEventListener('click', () => openLoginModal('Sign in to unlock AI, settings & cloud saves'));
 
     // Handle auth callbacks (OAuth, recovery, confirmation, invite)
     async function processCallback() {
@@ -8093,7 +8172,9 @@
       if (user) {
         enterApp();
       } else {
-        modal.hidden = false;
+        // Anonymous mode by default — boot the app, gate
+        // settings / AI / cloud behind a sign-in prompt.
+        enterAnonApp();
       }
     })();
   }
