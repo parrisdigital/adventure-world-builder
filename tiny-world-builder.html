@@ -1754,8 +1754,11 @@
     const tf = terrainLevelForCell(c);
     const bt = c.buildingType || null;
     const fs = c.fenceSide || null;
-    if (c.terrain !== 'grass' || c.kind || f !== 1 || tf !== 1 || bt || fs) {
-      return [x, z, c.terrain, c.kind, f, bt, tf, fs];
+    const extras = (c.extras && c.extras.length) ? c.extras.map(e => ({ k: e.kind, s: e.fenceSide || null, f: e.floors || 1 })) : null;
+    if (c.terrain !== 'grass' || c.kind || f !== 1 || tf !== 1 || bt || fs || extras) {
+      const out = [x, z, c.terrain, c.kind, f, bt, tf, fs];
+      if (extras) out.push(extras);
+      return out;
     }
     return null;
   }
@@ -3155,6 +3158,79 @@
     return g;
   }
 
+  // Road-aware fence variant — picked when the tile underneath is a
+  // path. Level 1: speed bump + zebra stripes. Level 2: zebra crossing
+  // with pillars at the sides. Level 3+: stone arch / gate spanning
+  // the road. Always oriented across the path direction.
+  function makeRoadGate(side = 'n', level = 1, pathOrientation = 'x') {
+    const g = new THREE.Group();
+    level = Math.max(1, Math.min(MAX_FLOORS, level || 1));
+    // Determine which axis the road runs along (x or z) so the gate
+    // spans across it. Default to span on the perpendicular axis.
+    const spanAlongX = pathOrientation === 'x';
+
+    // Zebra stripes — 5 thin white slabs across the road.
+    const stripeMat = M.wallCream || M.pathTrim || M.path;
+    for (let i = -2; i <= 2; i++) {
+      const stripe = new THREE.Mesh(
+        new THREE.BoxGeometry(spanAlongX ? 0.85 : 0.14, 0.012, spanAlongX ? 0.14 : 0.85),
+        stripeMat
+      );
+      stripe.position.set(spanAlongX ? 0 : i * 0.17, 0.008, spanAlongX ? i * 0.17 : 0);
+      g.add(stripe);
+    }
+
+    if (level === 1) {
+      // Speed bump — single low rounded slab across the road.
+      const bump = new THREE.Mesh(
+        roundedBox(spanAlongX ? 0.92 : 0.18, 0.07, spanAlongX ? 0.18 : 0.92, 0.04),
+        M.bridgeWoodD || M.path
+      );
+      bump.position.y = 0.04;
+      g.add(bump);
+    } else if (level === 2) {
+      // Two short pillars flanking the crossing.
+      const pillarMat = M.castleStone || M.fenceSteel;
+      for (const s of [-1, 1]) {
+        const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.34, 0.12), pillarMat);
+        pillar.position.set(spanAlongX ? s * 0.42 : 0, 0.17, spanAlongX ? 0 : s * 0.42);
+        g.add(pillar);
+        const cap = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.16), M.castleStoneD || M.fenceSteel);
+        cap.position.set(spanAlongX ? s * 0.42 : 0, 0.36, spanAlongX ? 0 : s * 0.42);
+        g.add(cap);
+      }
+    } else {
+      // Stone arch / gate spanning the road. Two pillars + a crossbar.
+      const pillarMat = M.castleStone || M.fenceSteel;
+      const beamMat   = M.castleStoneD || M.fenceSteel;
+      const pillarH   = 0.55 + Math.min(level - 3, 4) * 0.06;
+      for (const s of [-1, 1]) {
+        const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.14, pillarH, 0.14), pillarMat);
+        pillar.position.set(spanAlongX ? s * 0.42 : 0, pillarH / 2, spanAlongX ? 0 : s * 0.42);
+        g.add(pillar);
+      }
+      const beam = new THREE.Mesh(
+        new THREE.BoxGeometry(spanAlongX ? 1.00 : 0.16, 0.10, spanAlongX ? 0.16 : 1.00),
+        beamMat
+      );
+      beam.position.y = pillarH + 0.05;
+      g.add(beam);
+      // Banner / keystone in the middle.
+      const stone = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.18, 0.20), pillarMat);
+      stone.position.y = pillarH + 0.20;
+      g.add(stone);
+      if (level >= 5) {
+        const flag = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.22, 0.04), M.woodTrim || M.fenceSteel);
+        flag.position.y = pillarH + 0.38;
+        g.add(flag);
+      }
+    }
+
+    g.userData = { kind: 'fence', roadGate: true, level };
+    castReceive(g);
+    return g;
+  }
+
   function makeFence(side = 'n', level = 1) {
     const g = new THREE.Group();
     level = Math.max(1, Math.min(MAX_FLOORS, level || 1));
@@ -3478,7 +3554,7 @@
 
   for (let x = 0; x < GRID; x++) {
     world[x] = [];
-    for (let z = 0; z < GRID; z++) world[x][z] = { terrain: 'grass', terrainFloors: 1, kind: null, floors: 1, buildingType: null, fenceSide: null };
+    for (let z = 0; z < GRID; z++) world[x][z] = { terrain: 'grass', terrainFloors: 1, kind: null, floors: 1, buildingType: null, fenceSide: null, extras: [] };
   }
 
   const MAX_FLOORS = 8;
@@ -3510,7 +3586,7 @@
     for (let x = 0; x < GRID; x++) {
       cells[x] = [];
       for (let z = 0; z < GRID; z++) {
-        cells[x][z] = { terrain: 'grass', terrainFloors: 1, kind: null, floors: 1, buildingType: null, fenceSide: null };
+        cells[x][z] = { terrain: 'grass', terrainFloors: 1, kind: null, floors: 1, buildingType: null, fenceSide: null, extras: [] };
       }
     }
     return cells;
@@ -4340,12 +4416,15 @@
     const { animate = false, delay = 0 } = opts || {};
     const key = x + ',' + z;
     let entry = cellMeshes[key];
-    if (!entry) entry = cellMeshes[key] = { tile: null, object: null };
+    if (!entry) entry = cellMeshes[key] = { tile: null, object: null, extras: [] };
     if (entry.object) {
       worldGroup.remove(entry.object);
       disposeGroup(entry.object);
       entry.object = null;
     }
+    // Always rebuild extras when the main object is rebuilt — they
+    // depend on world[x][z].extras and visually sit alongside.
+    renderCellExtras(x, z);
 
     const kind = world[x][z].kind;
     if (!kind) return;
@@ -4366,9 +4445,17 @@
     else if (kind === 'carrot')    mesh = makeCarrot();
     else if (kind === 'sunflower') mesh = makeSunflower();
     else if (kind === 'fence') {
-      mesh = isCastleFence(x, z)
-        ? makeCastleWallSegment(getCastleWallNeighbors(x, z))
-        : makeFence(normalizeFenceSide(world[x][z].fenceSide), level);
+      if (world[x][z].terrain === 'path') {
+        // Pick orientation from neighbouring path cells so the gate
+        // spans across the road, not along it.
+        const pn = getPathNeighbors(x, z);
+        const pathAxis = (pn.e || pn.w) ? 'x' : (pn.n || pn.s) ? 'z' : 'x';
+        mesh = makeRoadGate(normalizeFenceSide(world[x][z].fenceSide), level, pathAxis);
+      } else {
+        mesh = isCastleFence(x, z)
+          ? makeCastleWallSegment(getCastleWallNeighbors(x, z))
+          : makeFence(normalizeFenceSide(world[x][z].fenceSide), level);
+      }
     }
     else if (kind === 'house') {
       const floors = world[x][z].floors || 1;
@@ -4448,6 +4535,84 @@
     if (animate) animateDrop(mesh, 2.0, 0.5, delay, easeOutBack);
   }
 
+  // Build the secondary decorations (tufts / fences) that live alongside
+  // the cell's main `kind`. Extras stay smaller and live near the edge
+  // of the tile so they read as add-ons rather than the main occupant.
+  function renderCellExtras(x, z) {
+    const key = x + ',' + z;
+    let entry = cellMeshes[key];
+    if (!entry) entry = cellMeshes[key] = { tile: null, object: null, extras: [] };
+    if (!entry.extras) entry.extras = [];
+    // Dispose any previous extras.
+    for (const m of entry.extras) {
+      worldGroup.remove(m);
+      disposeGroup(m);
+    }
+    entry.extras.length = 0;
+    const cell = world[x] && world[x][z];
+    if (!cell || !cell.extras || !cell.extras.length) return;
+    const p = tilePos(x, z);
+    const objectY = TOP_H + terrainRiseAt(x, z);
+    cell.extras.forEach((ex, i) => {
+      let mesh = null;
+      if (ex.kind === 'tuft') mesh = makeTuft();
+      else if (ex.kind === 'fence') mesh = makeFence(normalizeFenceSide(ex.fenceSide), ex.floors || 1);
+      if (!mesh) return;
+      // Smaller, corner-offset extras so they sit alongside the main
+      // kind without overlapping its silhouette.
+      if (ex.kind === 'tuft') {
+        const cornerOff = 0.30;
+        const corners = [
+          [-cornerOff, -cornerOff], [cornerOff, -cornerOff],
+          [-cornerOff,  cornerOff], [cornerOff,  cornerOff],
+        ];
+        const [dx, dz] = corners[(i + Math.floor(cellRand(x, z, 90 + i) * 4)) % 4];
+        mesh.position.set(p.x + dx, objectY, p.z + dz);
+        mesh.scale.set(0.7, 0.7, 0.7);
+      } else {
+        // Fences keep their full side geometry (they live on the tile edge).
+        mesh.position.set(p.x, objectY, p.z);
+      }
+      mesh.userData.gx = x;
+      mesh.userData.gz = z;
+      mesh.userData.fadeRole = 'object';
+      mesh.userData.baseY = mesh.position.y;
+      mesh.userData.extraSlot = i;
+      prepareFadeable(mesh, { opacity: opacityAtWorldPosition(mesh.position.x, mesh.position.z), grayscale: isOutsideHomeGrid(x, z) });
+      worldGroup.add(mesh);
+      entry.extras.push(mesh);
+      animateDrop(mesh, 1.6, 0.42, 0.04 * i, easeOutBack);
+    });
+  }
+
+  function addCellExtra(x, z, extra) {
+    if (!world[x] || !world[x][z]) return;
+    const cell = world[x][z];
+    if (!cell.extras) cell.extras = [];
+    // De-dupe identical fence sides; level them up instead.
+    if (extra.kind === 'fence') {
+      const side = normalizeFenceSide(extra.fenceSide);
+      const existing = cell.extras.find(e => e.kind === 'fence' && normalizeFenceSide(e.fenceSide) === side);
+      if (existing) {
+        existing.floors = Math.min((existing.floors || 1) + 1, MAX_FLOORS);
+        renderCellExtras(x, z);
+        saveState();
+        return;
+      }
+    }
+    cell.extras.push(Object.assign({ floors: 1 }, extra));
+    renderCellExtras(x, z);
+    saveState();
+  }
+
+  function popCellExtra(x, z) {
+    if (!world[x] || !world[x][z] || !world[x][z].extras || !world[x][z].extras.length) return false;
+    world[x][z].extras.pop();
+    renderCellExtras(x, z);
+    saveState();
+    return true;
+  }
+
   const CROP_KINDS = new Set(['crop', 'corn', 'wheat', 'pumpkin', 'carrot', 'sunflower']);
 
   function setCell(x, z, opts) {
@@ -4482,7 +4647,12 @@
     const prevTileLevel = tileLevelForCell(prev);
     const nextTileLevel = tileLevelForCell({ terrain: nextTerrain, terrainFloors: newTerrainFloors, kind: nextKind, floors: newFloors, buildingType: newBType, fenceSide: newFenceSide });
     const tileHeightChanged = prevTileLevel !== nextTileLevel;
-    world[x][z] = { terrain: nextTerrain, terrainFloors: newTerrainFloors, kind: nextKind, floors: newFloors, buildingType: newBType, fenceSide: newFenceSide };
+    // Preserve `extras` (decorative tufts / fences sitting alongside the
+    // main kind) across setCell unless the caller explicitly clears them.
+    const carriedExtras = opts && Object.prototype.hasOwnProperty.call(opts, 'extras')
+      ? (opts.extras || [])
+      : (prev.extras || []);
+    world[x][z] = { terrain: nextTerrain, terrainFloors: newTerrainFloors, kind: nextKind, floors: newFloors, buildingType: newBType, fenceSide: newFenceSide, extras: carriedExtras };
 
     // For house clusters, every cell shares the floors count. Propagate to all.
     if (nextKind === 'house' && floorsChanged) {
@@ -5184,8 +5354,14 @@
     }
     // Ensure world row exists
     if (!world[x]) world[x] = [];
-    const cell = world[x][z] || { terrain: 'grass', terrainFloors: 1, kind: null, floors: 1, buildingType: null, fenceSide: null };
+    const cell = world[x][z] || { terrain: 'grass', terrainFloors: 1, kind: null, floors: 1, buildingType: null, fenceSide: null, extras: [] };
     if (selectedTool.erase) {
+      // Peel decorations off first — tufts / fences sitting alongside
+      // the main kind go before the main kind itself goes.
+      if (cell.extras && cell.extras.length) {
+        popCellExtra(x, z);
+        return;
+      }
       if (cell.kind) setCell(x, z, { terrain: cell.terrain, terrainFloors: terrainLevelForCell(cell), kind: null, floors: 1 });
       else if (cell.terrain !== 'grass') setCell(x, z, { terrain: 'grass', terrainFloors: terrainLevelForCell(cell), kind: null, floors: 1 });
       return;
@@ -5214,11 +5390,12 @@
         setCell(x, z, { terrain: cell.terrain, terrainFloors: terrainLevelForCell(cell), kind: 'fence', floors: newLevel, fenceSide: side });
         return;
       }
-      // Rocks and fences are placed on existing tiles — keep the
-      // underlying terrain. If something was already on the tile,
-      // squash it (see squashExistingObject) instead of silently
-      // replacing it.
-      if (cell.kind && cell.kind !== 'fence') squashExistingObject(x, z);
+      // Tile already has a different main occupant — fence co-exists
+      // as a decoration alongside it instead of squashing it.
+      if (cell.kind && cell.kind !== 'fence') {
+        addCellExtra(x, z, { kind: 'fence', fenceSide: side });
+        return;
+      }
       setCell(x, z, { terrain: cell.terrain, terrainFloors: terrainLevelForCell(cell), kind: 'fence', floors: 1, fenceSide: side });
       return;
     }
@@ -5229,16 +5406,33 @@
         setCell(x, z, { terrain: cell.terrain, terrainFloors: terrainLevelForCell(cell), kind: selectedTool.kind, floors: newLevel });
         return;
       }
-      // Rocks sit on whatever tile already exists — keep the underlying
-      // terrain even on water — and squash any existing object on top.
-      if (selectedTool.kind === 'rock') {
-        if (cell.kind && cell.kind !== 'rock') squashExistingObject(x, z);
-        setCell(x, z, { terrain: cell.terrain, terrainFloors: terrainLevelForCell(cell), kind: 'rock', floors: 1 });
+      // Tufts are decorative — they go alongside another main kind
+      // rather than replacing it.
+      if (selectedTool.kind === 'tuft' && cell.kind && cell.kind !== 'tuft') {
+        addCellExtra(x, z, { kind: 'tuft' });
         return;
       }
+      // If the tile's current main is a fence or tuft, demote it to an
+      // extra rather than squashing it so they can co-exist with the
+      // new primary kind. Otherwise squash as usual (rocks etc.).
+      const incomingPrimary = selectedTool.kind;
+      const demote = (cell.kind === 'fence' || cell.kind === 'tuft') && incomingPrimary !== 'fence' && incomingPrimary !== 'tuft';
       let newTerrain = selectedTool.terrainOverride || cell.terrain;
-      if (newTerrain === 'water' && selectedTool.kind !== 'bridge') newTerrain = 'grass';
-      setCell(x, z, { terrain: newTerrain, terrainFloors: terrainLevelForCell(cell), kind: selectedTool.kind, floors: 1 });
+      // Rocks keep the underlying terrain even on water; everything
+      // else falls back to grass over water (existing behaviour).
+      if (incomingPrimary !== 'rock' && newTerrain === 'water' && incomingPrimary !== 'bridge') newTerrain = 'grass';
+      if (demote) {
+        const carriedExtras = (cell.extras || []).slice();
+        carriedExtras.push(cell.kind === 'fence'
+          ? { kind: 'fence', fenceSide: cell.fenceSide || 'n', floors: cell.floors || 1 }
+          : { kind: 'tuft', floors: cell.floors || 1 });
+        setCell(x, z, { terrain: newTerrain, terrainFloors: terrainLevelForCell(cell), kind: incomingPrimary, floors: 1, extras: carriedExtras });
+        return;
+      }
+      if (cell.kind && cell.kind !== incomingPrimary && incomingPrimary === 'rock') {
+        squashExistingObject(x, z);
+      }
+      setCell(x, z, { terrain: newTerrain, terrainFloors: terrainLevelForCell(cell), kind: incomingPrimary, floors: 1 });
       return;
     }
     if (selectedTool.terrain) {
@@ -6871,12 +7065,12 @@
       // Accept either tuple form [x,z,terrain,kind,floors,buildingType,terrainFloors,fenceSide]
       // (storage / export) or object form {x,z,terrain,kind,floors,buildingType,terrainFloors,fenceSide}
       // (canonical schema, AI generation output).
-      let x, z, terrain, kind, floors, buildingType, terrainFloors, fenceSide;
+      let x, z, terrain, kind, floors, buildingType, terrainFloors, fenceSide, extras;
       if (Array.isArray(entry)) {
         if (entry.length < 4) continue;
-        [x, z, terrain, kind, floors, buildingType, terrainFloors, fenceSide] = entry;
+        [x, z, terrain, kind, floors, buildingType, terrainFloors, fenceSide, extras] = entry;
       } else if (entry && typeof entry === 'object') {
-        ({ x, z, terrain, kind, floors, buildingType, terrainFloors, fenceSide } = entry);
+        ({ x, z, terrain, kind, floors, buildingType, terrainFloors, fenceSide, extras } = entry);
       } else {
         continue;
       }
@@ -6885,6 +7079,13 @@
       const normalizedKind = kind || null;
       const normalizedFloors = floors || 1;
       const normalizedTerrainFloors = terrainFloors || (data.v === 3 ? 1 : (normalizedKind ? 1 : normalizedFloors));
+      const normalizedExtras = Array.isArray(extras)
+        ? extras.map(e => ({
+            kind: e.kind || e.k || null,
+            fenceSide: (e.fenceSide || e.s) ? normalizeFenceSide(e.fenceSide || e.s) : null,
+            floors: e.floors || e.f || 1,
+          })).filter(e => e.kind === 'fence' || e.kind === 'tuft')
+        : [];
       overrides.set(x + ',' + z, {
         terrain: terrain || 'grass',
         terrainFloors: normalizedTerrainFloors,
@@ -6892,6 +7093,7 @@
         floors: normalizedFloors,
         buildingType: buildingType || null,
         fenceSide: normalizedKind === 'fence' ? normalizeFenceSide(fenceSide) : null,
+        extras: normalizedExtras,
       });
     }
 
@@ -6907,6 +7109,7 @@
           floors:  o ? o.floors  : 1,
           buildingType: o ? o.buildingType : null,
           fenceSide: o ? o.fenceSide : null,
+          extras:  o ? o.extras  : [],
           tileDelay:   i * TILE_STAGGER,
           objectDelay: i * TILE_STAGGER + 0.04,
           forceTile: true,
