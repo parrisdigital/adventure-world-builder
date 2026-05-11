@@ -5221,6 +5221,8 @@
   // keyboard shortcuts
   window.addEventListener('keydown', e => {
     if (shortcutTargetBlocked(e.target)) return;
+    // Never swallow OS-level keystrokes like Cmd+R (reload), Ctrl+R, Cmd+F, etc.
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
     const k = e.key.toLowerCase();
     if (e.code === 'Space') {
       spaceDown = true;
@@ -5232,8 +5234,7 @@
       selectTool(shortcutTool);
       return;
     }
-    if (k === 'r') confirmReset();
-    else if (k === 'c') doClear();
+    if (k === 'c') doClear();
     else if (k === 'p' || k === 'i') togglePerspective();
     else if (e.key === 'ArrowLeft') { e.preventDefault(); panCameraByCells(-1, 0); }
     else if (e.key === 'ArrowRight') { e.preventDefault(); panCameraByCells(1, 0); }
