@@ -608,6 +608,13 @@
     font-size: 12px;
     line-height: 1.35;
   }
+  .play-style {
+    margin-top: 6px;
+    color: #7b684f;
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: 0;
+  }
   .play-row {
     display: grid;
     grid-template-columns: 58px 1fr 36px;
@@ -641,6 +648,10 @@
   .play-actions .btn {
     flex: 1 1 auto;
     padding: 8px 10px;
+  }
+  .play-actions .btn.active {
+    border-color: rgba(58, 114, 200, 0.55);
+    box-shadow: 0 0 0 3px rgba(58, 114, 200, 0.10);
   }
 
   .grain {
@@ -1700,6 +1711,7 @@
       <div>
         <div class="play-title" id="play-title">Play Mode</div>
         <div class="play-objective" id="play-objective">Defeat the villain.</div>
+        <div class="play-style" id="play-style">Vanguard · Move 3 · Slash 1</div>
       </div>
     </div>
     <div class="play-row">
@@ -1713,7 +1725,9 @@
       <span id="play-villain-health">4/4</span>
     </div>
     <div class="play-actions">
-      <button class="btn" id="play-attack" type="button">Attack</button>
+      <button class="btn" id="play-attack" type="button">Slash</button>
+      <button class="btn" id="play-dash" type="button">Dash</button>
+      <button class="btn" id="play-guard" type="button">Guard</button>
       <button class="btn" id="play-reset" type="button">Restart</button>
       <button class="btn" id="play-exit" type="button">Editor</button>
     </div>
@@ -2336,13 +2350,25 @@
     cloudShade:new THREE.MeshLambertMaterial({ color: 0xdcd9d0 }),
 
     playerTunic:  new THREE.MeshLambertMaterial({ color: 0x3a72c8 }),
+    playerTunicD: new THREE.MeshLambertMaterial({ color: 0x285695 }),
+    playerCape:   new THREE.MeshLambertMaterial({ color: 0xc95d78 }),
     playerFace:   new THREE.MeshLambertMaterial({ color: 0xf0bf86 }),
     playerHair:   new THREE.MeshLambertMaterial({ color: 0x5c3818 }),
     playerBlade:  new THREE.MeshLambertMaterial({ color: 0xd8dde5 }),
+    playerShield: new THREE.MeshLambertMaterial({ color: 0xe9d79a }),
+    playerBoot:   new THREE.MeshLambertMaterial({ color: 0x7a4a2e }),
     villainCloak: new THREE.MeshLambertMaterial({ color: 0x7a2634 }),
+    villainCloakD:new THREE.MeshLambertMaterial({ color: 0x4f1c2b }),
     villainFace:  new THREE.MeshLambertMaterial({ color: 0xc98f5d }),
     villainEye:   new THREE.MeshLambertMaterial({ color: 0xf2c849 }),
+    villainBlade: new THREE.MeshLambertMaterial({ color: 0x2a251f }),
+    npcVest:      new THREE.MeshLambertMaterial({ color: 0x4f9a44 }),
+    npcHat:       new THREE.MeshLambertMaterial({ color: 0xe6c354 }),
+    npcGuard:     new THREE.MeshLambertMaterial({ color: 0x8d98a5 }),
+    chestBand:    new THREE.MeshLambertMaterial({ color: 0xd9a82b }),
+    relicGlow:    new THREE.MeshBasicMaterial({ color: 0xf2f0a0, transparent: true, opacity: 0.78 }),
     playAttack:   new THREE.MeshBasicMaterial({ color: 0xf2c849, transparent: true, opacity: 0.52, depthWrite: false }),
+    playMove:     new THREE.MeshBasicMaterial({ color: 0x3a72c8, transparent: true, opacity: 0.18, depthWrite: false }),
     markerPlayer: new THREE.MeshLambertMaterial({ color: 0x3a72c8 }),
     markerVillain:new THREE.MeshLambertMaterial({ color: 0xb84838 }),
     markerChest:  new THREE.MeshLambertMaterial({ color: 0xd9a82b }),
@@ -4526,6 +4552,156 @@
     return sprite;
   }
 
+  function makeHeroCharacter(opts) {
+    opts = opts || {};
+    const g = new THREE.Group();
+    g.name = opts.name || 'heroCharacter';
+    const parts = {};
+    parts.body = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.42, 0.28), M.playerTunic);
+    parts.body.position.y = 0.34;
+    parts.tunic = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.28, 4), M.playerTunicD);
+    parts.tunic.position.y = 0.18;
+    parts.tunic.rotation.y = Math.PI / 4;
+    parts.cape = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.34, 0.035), M.playerCape);
+    parts.cape.position.set(0, 0.31, 0.18);
+    parts.cape.rotation.x = -0.16;
+    parts.head = new THREE.Mesh(new THREE.SphereGeometry(0.155, 12, 8), M.playerFace);
+    parts.head.position.y = 0.65;
+    parts.hair = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.075, 0.18), M.playerHair);
+    parts.hair.position.set(0, 0.75, -0.035);
+    parts.armL = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.24, 0.08), M.playerFace);
+    parts.armL.position.set(-0.22, 0.38, -0.02);
+    parts.armR = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.24, 0.08), M.playerFace);
+    parts.armR.position.set(0.22, 0.38, -0.02);
+    parts.legL = new THREE.Mesh(new THREE.BoxGeometry(0.095, 0.18, 0.10), M.playerBoot);
+    parts.legL.position.set(-0.10, 0.05, -0.03);
+    parts.legR = new THREE.Mesh(new THREE.BoxGeometry(0.095, 0.18, 0.10), M.playerBoot);
+    parts.legR.position.set(0.10, 0.05, 0.03);
+    parts.sword = new THREE.Group();
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.46, 0.045), M.playerBlade);
+    blade.position.y = 0.22;
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.10, 4), M.playerBlade);
+    tip.position.y = 0.50;
+    tip.rotation.y = Math.PI / 4;
+    const hilt = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.035, 0.035), M.playerHair);
+    hilt.position.y = 0.02;
+    parts.sword.add(blade, tip, hilt);
+    parts.sword.position.set(0.27, 0.26, -0.16);
+    parts.sword.rotation.z = -0.45;
+    parts.sword.rotation.x = 0.10;
+    parts.shield = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.035, 8), M.playerShield);
+    parts.shield.position.set(-0.26, 0.34, -0.13);
+    parts.shield.rotation.x = Math.PI / 2;
+    parts.shield.rotation.z = Math.PI / 8;
+    g.add(parts.tunic, parts.body, parts.cape, parts.head, parts.hair, parts.armL, parts.armR, parts.legL, parts.legR, parts.sword, parts.shield);
+    g.userData.parts = parts;
+    g.userData.fightingStyle = 'Vanguard';
+    if (opts.scale) g.scale.setScalar(opts.scale);
+    return castReceive(g);
+  }
+
+  function makeVillainCharacter(opts) {
+    opts = opts || {};
+    const g = new THREE.Group();
+    g.name = opts.name || 'villainCharacter';
+    const parts = {};
+    parts.cloak = new THREE.Mesh(new THREE.ConeGeometry(0.29, 0.62, 5), M.villainCloak);
+    parts.cloak.position.y = 0.34;
+    parts.collar = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.18, 5), M.villainCloakD);
+    parts.collar.position.y = 0.61;
+    parts.collar.rotation.y = Math.PI;
+    parts.head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 8), M.villainFace);
+    parts.head.position.y = 0.73;
+    parts.helm = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.18, 5), M.villainCloakD);
+    parts.helm.position.y = 0.85;
+    parts.helm.rotation.y = Math.PI;
+    parts.eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.035, 0.02), M.villainEye);
+    parts.eyeL.position.set(-0.055, 0.73, -0.155);
+    parts.eyeR = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.035, 0.02), M.villainEye);
+    parts.eyeR.position.set(0.055, 0.73, -0.155);
+    parts.armL = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.27, 0.08), M.villainCloakD);
+    parts.armL.position.set(-0.23, 0.38, -0.01);
+    parts.armR = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.27, 0.08), M.villainCloakD);
+    parts.armR.position.set(0.23, 0.38, -0.01);
+    parts.blade = new THREE.Group();
+    const shaft = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.56, 0.045), M.villainBlade);
+    shaft.position.y = 0.22;
+    const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.08, 0), M.villainEye);
+    gem.position.y = 0.55;
+    parts.blade.add(shaft, gem);
+    parts.blade.position.set(-0.30, 0.26, -0.02);
+    parts.blade.rotation.z = 0.30;
+    g.add(parts.cloak, parts.collar, parts.head, parts.helm, parts.eyeL, parts.eyeR, parts.armL, parts.armR, parts.blade);
+    g.userData.parts = parts;
+    g.userData.fightingStyle = 'Hexblade';
+    if (opts.scale) g.scale.setScalar(opts.scale);
+    return castReceive(g);
+  }
+
+  function makeNpcCharacter(variant, opts) {
+    opts = opts || {};
+    const g = new THREE.Group();
+    g.name = 'npcCharacter:' + (variant || 'villager');
+    const bodyMat = variant === 'guard' ? M.npcGuard : M.npcVest;
+    const parts = {};
+    parts.body = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.32, 8), bodyMat);
+    parts.body.position.y = 0.22;
+    parts.head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 7), M.playerFace);
+    parts.head.position.y = 0.45;
+    parts.armL = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.22, 0.055), M.playerFace);
+    parts.armL.position.set(-0.16, 0.26, -0.02);
+    parts.armR = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.22, 0.055), M.playerFace);
+    parts.armR.position.set(0.16, 0.26, -0.02);
+    if (variant === 'farmer') {
+      parts.hat = new THREE.Mesh(new THREE.CylinderGeometry(0.20, 0.20, 0.025, 12), M.npcHat);
+      parts.hat.position.y = 0.56;
+      parts.crown = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.08, 8), M.npcHat);
+      parts.crown.position.y = 0.61;
+      g.add(parts.hat, parts.crown);
+    } else if (variant === 'guard') {
+      parts.spear = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.58, 0.035), M.playerBlade);
+      parts.spear.position.set(0.22, 0.38, -0.02);
+      parts.spear.rotation.z = -0.10;
+      parts.guardShield = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.10, 0.03, 8), M.playerShield);
+      parts.guardShield.position.set(-0.18, 0.26, -0.08);
+      parts.guardShield.rotation.x = Math.PI / 2;
+      g.add(parts.spear, parts.guardShield);
+    } else {
+      parts.satchel = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.12, 0.05), M.bridgeWoodD);
+      parts.satchel.position.set(0.12, 0.22, 0.13);
+      g.add(parts.satchel);
+    }
+    g.add(parts.body, parts.head, parts.armL, parts.armR);
+    g.userData.parts = parts;
+    if (opts.scale) g.scale.setScalar(opts.scale);
+    return castReceive(g);
+  }
+
+  function makeTreasureChest(opened) {
+    const g = new THREE.Group();
+    g.name = opened ? 'treasureChest:open' : 'treasureChest:closed';
+    const base = new THREE.Mesh(roundedBox(0.38, 0.20, 0.28, 0.04), M.bridgeWood);
+    base.position.y = 0.12;
+    const lid = new THREE.Mesh(roundedBox(0.40, 0.12, 0.30, 0.045), M.bridgeWoodD);
+    lid.position.set(0, opened ? 0.32 : 0.25, opened ? 0.13 : 0);
+    lid.rotation.x = opened ? -0.92 : 0;
+    const bandA = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.24, 0.31), M.chestBand);
+    bandA.position.set(-0.13, 0.16, 0);
+    const bandB = bandA.clone();
+    bandB.position.x = 0.13;
+    const latch = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.04), M.chestBand);
+    latch.position.set(0, 0.19, -0.16);
+    const relic = new THREE.Mesh(new THREE.OctahedronGeometry(0.07, 0), M.relicGlow);
+    relic.position.set(0, 0.26, -0.02);
+    relic.visible = !!opened;
+    const glow = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 8), M.relicGlow);
+    glow.position.set(0, 0.25, -0.02);
+    glow.scale.y = 0.45;
+    glow.visible = !!opened;
+    g.add(base, lid, bandA, bandB, latch, relic, glow);
+    return castReceive(g);
+  }
+
   function makeGameMarkerMesh(type, opts) {
     opts = opts || {};
     const state = opts.state || {};
@@ -4539,30 +4715,15 @@
     g.add(ring);
 
     if (type === 'playerSpawn') {
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.46, 6), M.woodTrim);
-      post.position.y = 0.25;
-      const flag = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.16, 0.035), def.material);
-      flag.position.set(0.12, 0.38, 0);
-      g.add(post, flag);
+      const hero = makeHeroCharacter({ name: 'playerSpawnPreview', scale: opts.thumbnail ? 0.62 : 0.72 });
+      hero.position.y = 0.03;
+      g.add(hero);
     } else if (type === 'villainSpawn') {
-      const shard = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.44, 5), def.material);
-      shard.position.y = 0.26;
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), M.villainEye);
-      eye.position.set(0, 0.34, -0.10);
-      g.add(shard, eye);
+      const villain = makeVillainCharacter({ name: 'villainSpawnPreview', scale: opts.thumbnail ? 0.62 : 0.72 });
+      villain.position.y = 0.02;
+      g.add(villain);
     } else if (type === 'chest') {
-      const base = new THREE.Mesh(roundedBox(0.32, 0.18, 0.24, 0.035), M.bridgeWood);
-      base.position.y = 0.12;
-      const lid = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.08, 0.26), def.material);
-      lid.position.y = state.collected ? 0.31 : 0.25;
-      lid.position.z = state.collected ? 0.12 : 0;
-      lid.rotation.x = state.collected ? -0.85 : 0;
-      const latch = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 0.035), M.knob);
-      latch.position.set(0, 0.18, -0.14);
-      const glow = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), M.knob);
-      glow.position.set(0, 0.25, 0);
-      glow.visible = !state.collected;
-      g.add(base, lid, latch, glow);
+      g.add(makeTreasureChest(!!state.collected));
     } else if (type === 'gate') {
       const left = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.46, 0.07), def.material);
       const right = left.clone();
@@ -4581,11 +4742,9 @@
       lock.visible = !state.unlocked;
       g.add(left, right, top, doorLeft, doorRight, lock);
     } else if (type === 'npc') {
-      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.30, 8), def.material);
-      body.position.y = 0.18;
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), M.playerFace);
-      head.position.y = 0.40;
-      g.add(body, head);
+      const npc = makeNpcCharacter('quest', { scale: opts.thumbnail ? 0.72 : 0.82 });
+      npc.position.y = 0.02;
+      g.add(npc);
     } else if (type === 'exit') {
       const pad = new THREE.Mesh(new THREE.CircleGeometry(0.24, 24), def.material);
       pad.rotation.x = -Math.PI / 2;
@@ -4660,11 +4819,6 @@
     if (!GAME_MARKER_TYPES.includes(type)) return false;
     const marker = normalizeGameMarker(type, { x, z });
     if (!marker || marker.x >= GRID || marker.z >= GRID) return false;
-    if (!(opts && opts.allowBlocked) && typeof playCanStandAt === 'function' && !playCanStandAt(marker.x, marker.z)) {
-      adventurePanel.feedback = 'Markers need walkable tiles.';
-      updateAdventurePanel();
-      return false;
-    }
     adventurePanel.feedback = '';
     gameLayer.markers[type] = marker;
     renderGameLayer();
@@ -7663,7 +7817,8 @@
   // -------- play mode --------
   const PLAY_PLAYER_MAX_HP = 6;
   const PLAY_VILLAIN_MAX_HP = 4;
-  const PLAY_PLAYER_SPEED = 3.0;
+  const PLAY_PLAYER_SPEED = 2.75;
+  const PLAY_PLAYER_DASH_SPEED = 5.1;
   const PLAY_VILLAIN_SPEED = 1.65;
   const PLAY_VILLAIN_PATROL_SPEED = 0.85;
   const PLAY_VILLAIN_GUARD_RADIUS = 5.5;
@@ -7673,6 +7828,14 @@
   const PLAY_VILLAIN_ATTACK_RANGE = 0.72;
   const PLAY_PLAYER_RADIUS = 0.28;
   const PLAY_BLOCKING_KINDS = new Set(['house', 'rock', 'fence']);
+  const PLAY_PLAYER_ACTIONS = {
+    slash: { label: 'Slash', range: 1.08, damage: 1, cooldown: 0.38, windup: 0.08, duration: 0.24 },
+    dash: { label: 'Dash', range: 2, cooldown: 1.20, duration: 0.34 },
+    guard: { label: 'Guard', range: 0, cooldown: 1.10, duration: 0.95 },
+  };
+  const PLAY_VILLAIN_ACTIONS = {
+    hexSlash: { label: 'Hex Slash', range: PLAY_VILLAIN_ATTACK_RANGE, damage: 1, windup: PLAY_VILLAIN_WINDUP, cooldown: 0.85 },
+  };
   const playGroup = new THREE.Group();
   playGroup.name = 'playMode';
   playGroup.visible = false;
@@ -7696,6 +7859,7 @@
     playerMesh: null,
     villainMesh: null,
     attackMesh: null,
+    moveMesh: null,
   };
 
   const playHud = {
@@ -7706,57 +7870,38 @@
     hpBar: document.getElementById('play-health-bar'),
     villainHp: document.getElementById('play-villain-health'),
     villainBar: document.getElementById('play-villain-bar'),
+    style: document.getElementById('play-style'),
     toggle: document.getElementById('play-toggle'),
     attack: document.getElementById('play-attack'),
+    dash: document.getElementById('play-dash'),
+    guard: document.getElementById('play-guard'),
     reset: document.getElementById('play-reset'),
     exit: document.getElementById('play-exit'),
   };
 
   function makePlayerPawn() {
-    const g = new THREE.Group();
-    g.name = 'playerPawn';
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.48, 0.28), M.playerTunic);
-    body.position.y = 0.30;
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), M.playerFace);
-    head.position.y = 0.64;
-    const hair = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.08, 0.18), M.playerHair);
-    hair.position.set(0, 0.76, -0.02);
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.44, 0.045), M.playerBlade);
-    blade.position.set(0.25, 0.43, -0.16);
-    blade.rotation.z = -0.35;
-    const hilt = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.035, 0.035), M.playerHair);
-    hilt.position.set(0.20, 0.27, -0.11);
-    g.add(body, head, hair, blade, hilt);
-    return castReceive(g);
+    return makeHeroCharacter({ name: 'playerPawn' });
   }
 
   function makeVillainPawn() {
-    const g = new THREE.Group();
-    g.name = 'villainPawn';
-    const cloak = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.62, 5), M.villainCloak);
-    cloak.position.y = 0.34;
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), M.villainFace);
-    head.position.y = 0.72;
-    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.045, 0.05), M.villainCloak);
-    brow.position.set(0, 0.78, -0.13);
-    const eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.035, 0.02), M.villainEye);
-    eyeL.position.set(-0.055, 0.73, -0.16);
-    const eyeR = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.035, 0.02), M.villainEye);
-    eyeR.position.set(0.055, 0.73, -0.16);
-    const staff = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.70, 0.045), M.woodTrim);
-    staff.position.set(-0.25, 0.42, 0.02);
-    const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.08, 0), M.villainEye);
-    gem.position.set(-0.25, 0.82, 0.02);
-    g.add(cloak, head, brow, eyeL, eyeR, staff, gem);
-    return castReceive(g);
+    return makeVillainCharacter({ name: 'villainPawn' });
   }
 
   function makeAttackRing() {
-    const ring = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.58, 28), M.playAttack);
-    ring.name = 'attackRing';
+    const slash = new THREE.Mesh(new THREE.RingGeometry(0.34, 0.88, 30, 1, -0.78, 1.56), M.playAttack);
+    slash.name = 'swordSlashArc';
+    slash.rotation.x = -Math.PI / 2;
+    slash.visible = false;
+    slash.renderOrder = 4;
+    return slash;
+  }
+
+  function makeMoveRangeMesh() {
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.70, 3.02, 36), M.playMove);
+    ring.name = 'moveRange';
     ring.rotation.x = -Math.PI / 2;
     ring.visible = false;
-    ring.renderOrder = 4;
+    ring.renderOrder = 3;
     return ring;
   }
 
@@ -7769,6 +7914,7 @@
     playMode.playerMesh = null;
     playMode.villainMesh = null;
     playMode.attackMesh = null;
+    playMode.moveMesh = null;
   }
 
   function playInBounds(x, z) {
@@ -7843,13 +7989,9 @@
     for (const [type, marker] of Object.entries(markers)) {
       if (!playInBounds(marker.x, marker.z)) {
         errors.push(GAME_MARKER_DEFS[type].label + ' marker is outside the current board.');
-        continue;
-      }
-      if (['playerSpawn', 'villainSpawn', 'chest', 'gate', 'npc', 'questPoint', 'exit'].includes(type) &&
-          !playCanStandAt(marker.x, marker.z)) {
-        errors.push(GAME_MARKER_DEFS[type].label + ' marker must be on a walkable tile.');
       }
     }
+    if (!playOpenCells().length) errors.push('At least one walkable tile is required for Play Mode.');
     if (markers.playerSpawn && markers.villainSpawn &&
         markers.playerSpawn.x === markers.villainSpawn.x &&
         markers.playerSpawn.z === markers.villainSpawn.z) {
@@ -7873,9 +8015,8 @@
       adventurePanel.required.innerHTML = '';
       required.forEach(type => {
         const marker = gameLayer.markers[type];
-        const blocked = marker && !playCanStandAt(marker.x, marker.z);
         const item = document.createElement('div');
-        item.className = 'adventure-marker ' + (!marker || blocked ? (blocked ? 'error' : 'missing') : 'ok');
+        item.className = 'adventure-marker ' + (!marker ? 'missing' : 'ok');
         item.title = marker ? gameMarkerLabel(type) + ' at ' + marker.x + ',' + marker.z : gameMarkerLabel(type) + ' marker required';
         const dot = document.createElement('span');
         dot.className = 'adventure-dot';
@@ -7919,15 +8060,53 @@
     return points.length ? points : [{ x: origin.x, z: origin.z }];
   }
 
+  function playNearestOpenCell(origin, avoid) {
+    if (!origin) return null;
+    const start = {
+      x: Math.max(0, Math.min(GRID - 1, Math.round(origin.x))),
+      z: Math.max(0, Math.min(GRID - 1, Math.round(origin.z))),
+    };
+    const avoidKey = avoid ? avoid.x + ',' + avoid.z : '';
+    const key = (x, z) => x + ',' + z;
+    if (playCanStandAt(start.x, start.z) && key(start.x, start.z) !== avoidKey) return { x: start.x, z: start.z };
+    const queue = [start];
+    const seen = new Set([key(start.x, start.z)]);
+    const dirs = [[1,0],[-1,0],[0,1],[0,-1], [1,1],[-1,1],[1,-1],[-1,-1]];
+    for (let qi = 0; qi < queue.length; qi++) {
+      const cur = queue[qi];
+      for (const [dx, dz] of dirs) {
+        const nx = cur.x + dx;
+        const nz = cur.z + dz;
+        const nk = key(nx, nz);
+        if (!playInBounds(nx, nz) || seen.has(nk)) continue;
+        seen.add(nk);
+        if (playCanStandAt(nx, nz) && nk !== avoidKey) return { x: nx, z: nz };
+        queue.push({ x: nx, z: nz });
+      }
+    }
+    return null;
+  }
+
+  function playMarkerInteractionPoint(type) {
+    const marker = playMode.markers[type];
+    if (!marker) return null;
+    return playNearestOpenCell(marker) || marker;
+  }
+
   function playBuildSetup() {
     const validation = validateGameLayerForPlay();
     if (!validation.ok) return { errors: validation.errors };
+    const playerSpawn = playNearestOpenCell(validation.markers.playerSpawn);
+    const villainSpawn = playNearestOpenCell(validation.markers.villainSpawn, playerSpawn);
+    if (!playerSpawn || !villainSpawn) return { errors: ['Player and villain need at least two reachable start cells.'] };
     return {
       objective: validation.objective,
       markers: validation.markers,
-      player: validation.markers.playerSpawn,
-      villain: validation.markers.villainSpawn,
-      patrolPoints: playBuildPatrolPoints(validation.markers.villainSpawn),
+      player: playerSpawn,
+      villain: villainSpawn,
+      authoredPlayer: validation.markers.playerSpawn,
+      authoredVillain: validation.markers.villainSpawn,
+      patrolPoints: playBuildPatrolPoints(villainSpawn),
     };
   }
 
@@ -8023,7 +8202,11 @@
 
   function playDamagePlayer(amount) {
     if (playMode.ended) return;
-    playMode.player.hp -= amount;
+    const guarded = playMode.player && playMode.player.guarding;
+    const damage = guarded ? Math.max(0, amount - 1) : amount;
+    if (guarded && typeof playSfx === 'function') playSfx('knock', 0.28);
+    if (damage <= 0) return;
+    playMode.player.hp -= damage;
     playMode.player.hitFlash = 0.16;
     if (typeof playSfx === 'function') playSfx('knock', 0.45);
     if (playMode.player.hp <= 0) {
@@ -8034,7 +8217,98 @@
 
   function playMarkerReached(type, range) {
     const marker = playMode.markers[type];
-    return !!marker && playDistance(playMode.player, marker) <= (range || PLAY_INTERACT_RANGE);
+    if (!marker) return false;
+    const directRange = range || PLAY_INTERACT_RANGE;
+    if (playDistance(playMode.player, marker) <= directRange) return true;
+    const interactPoint = playMarkerInteractionPoint(type);
+    return !!interactPoint && playDistance(playMode.player, interactPoint) <= Math.max(directRange, 0.82);
+  }
+
+  function playFaceToward(entity, target) {
+    if (!entity || !target) return;
+    const dx = target.x - entity.x;
+    const dz = target.z - entity.z;
+    const d = Math.hypot(dx, dz);
+    if (d <= 0.001) return;
+    entity.dirX = dx / d;
+    entity.dirZ = dz / d;
+  }
+
+  function playEntityFacingAngle(entity, fallbackTarget) {
+    if (fallbackTarget) playFaceToward(entity, fallbackTarget);
+    return Math.atan2(entity.dirX || 0, entity.dirZ || -1);
+  }
+
+  function resetCharacterParts(mesh) {
+    const p = mesh && mesh.userData && mesh.userData.parts;
+    if (!p) return null;
+    for (const part of Object.values(p)) {
+      if (!part || !part.rotation || !part.position) continue;
+      if (!part.userData.basePosition) part.userData.basePosition = part.position.clone();
+      if (!part.userData.baseRotation) part.userData.baseRotation = part.rotation.clone();
+      part.position.copy(part.userData.basePosition);
+      part.rotation.copy(part.userData.baseRotation);
+    }
+    return p;
+  }
+
+  function animateHeroMesh(mesh, entity) {
+    const p = resetCharacterParts(mesh);
+    if (!p || !entity) return;
+    const walk = Math.sin(entity.movePhase || 0);
+    if (entity.action === 'move' || entity.action === 'dash') {
+      const stride = entity.action === 'dash' ? 0.45 : 0.28;
+      if (p.legL) p.legL.rotation.x = walk * stride;
+      if (p.legR) p.legR.rotation.x = -walk * stride;
+      if (p.armL) p.armL.rotation.x = -walk * stride * 0.7;
+      if (p.armR) p.armR.rotation.x = walk * stride * 0.6;
+      if (p.body) p.body.rotation.x = entity.action === 'dash' ? -0.18 : 0;
+      if (p.cape) p.cape.rotation.x -= entity.action === 'dash' ? 0.28 : 0.12;
+    }
+    if (entity.guardTimer > 0) {
+      if (p.armL) p.armL.rotation.x = -0.95;
+      if (p.shield) {
+        p.shield.position.set(-0.06, 0.42, -0.27);
+        p.shield.rotation.x = Math.PI / 2;
+        p.shield.rotation.z = 0;
+      }
+    }
+    if (entity.slashTimer > 0 && entity.actions) {
+      const spec = entity.actions.slash;
+      const t = 1 - Math.max(0, entity.slashTimer) / spec.duration;
+      const wind = Math.min(1, t / 0.35);
+      const cut = Math.max(0, (t - 0.28) / 0.72);
+      if (p.armR) {
+        p.armR.rotation.x = -0.9 + cut * 1.35;
+        p.armR.rotation.z = -0.35 + wind * 0.45;
+      }
+      if (p.sword) {
+        p.sword.rotation.z = -1.20 + cut * 2.25;
+        p.sword.rotation.x = 0.42 - cut * 0.75;
+        p.sword.position.x = 0.25 + Math.sin(cut * Math.PI) * 0.10;
+      }
+      if (p.cape) p.cape.rotation.z = -0.10 * Math.sin(cut * Math.PI);
+    }
+  }
+
+  function animateVillainMesh(mesh, entity) {
+    const p = resetCharacterParts(mesh);
+    if (!p || !entity) return;
+    const pace = Math.sin(playMode.time * (entity.state === 'chase' ? 8 : 4));
+    if (entity.state === 'chase' || entity.state === 'patrol' || entity.state === 'retreat') {
+      if (p.armL) p.armL.rotation.x = pace * 0.22;
+      if (p.armR) p.armR.rotation.x = -pace * 0.22;
+      if (p.cloak) p.cloak.rotation.z = pace * 0.035;
+    }
+    if (entity.state === 'windup') {
+      const t = 1 - Math.max(0, entity.windup || 0) / PLAY_VILLAIN_WINDUP;
+      if (p.armL) p.armL.rotation.x = -0.45 - t * 0.5;
+      if (p.blade) {
+        p.blade.rotation.z = 0.85 - t * 1.6;
+        p.blade.position.x = -0.22 + t * 0.16;
+      }
+      if (p.cloak) p.cloak.scale.setScalar(1 + Math.sin(t * Math.PI) * 0.05);
+    }
   }
 
   function updatePlayObjective() {
@@ -8100,6 +8374,7 @@
       villain.state = 'windup';
       villain.windup = PLAY_VILLAIN_WINDUP;
       villain.pendingStrike = true;
+      playFaceToward(villain, player);
       return;
     }
     const playerNearGuard = playDistance(player, { x: villain.spawnX, z: villain.spawnZ }) <= PLAY_VILLAIN_GUARD_RADIUS + 1;
@@ -8120,14 +8395,16 @@
     const villainPos = playWorldPosition(playMode.villain);
     if (playMode.playerMesh) {
       playMode.playerMesh.position.copy(playerPos);
-      playMode.playerMesh.rotation.y = Math.atan2(playMode.player.dirX || 0, playMode.player.dirZ || -1);
+      playMode.playerMesh.rotation.y = playEntityFacingAngle(playMode.player, playMode.player.slashTimer > 0 ? playMode.villain : null);
+      animateHeroMesh(playMode.playerMesh, playMode.player);
       const flash = playMode.player.hitFlash > 0 ? 1.08 : 1;
       playMode.playerMesh.scale.setScalar(flash);
     }
     if (playMode.villainMesh) {
       playMode.villainMesh.position.copy(villainPos);
       playMode.villainMesh.visible = playMode.villain.hp > 0;
-      playMode.villainMesh.rotation.y = Math.atan2(playMode.player.x - playMode.villain.x, playMode.player.z - playMode.villain.z);
+      playMode.villainMesh.rotation.y = playEntityFacingAngle(playMode.villain, playMode.player);
+      animateVillainMesh(playMode.villainMesh, playMode.villain);
       const flash = playMode.villain.hitFlash > 0 ? 1.10 : 1;
       playMode.villainMesh.scale.setScalar(flash);
     }
@@ -8137,6 +8414,12 @@
       playMode.attackMesh.visible = playMode.attackPulse > 0;
       const s = 1 + (1 - Math.max(0, playMode.attackPulse) / 0.18) * 0.35;
       playMode.attackMesh.scale.set(s, s, s);
+      playMode.attackMesh.rotation.z = -playMode.playerMesh.rotation.y;
+    }
+    if (playMode.moveMesh) {
+      playMode.moveMesh.position.copy(playerPos);
+      playMode.moveMesh.position.y += 0.012;
+      playMode.moveMesh.visible = playMode.active && !playMode.ended;
     }
   }
 
@@ -8155,16 +8438,37 @@
     if (playHud.objective) {
       playHud.objective.textContent = playObjectiveText();
     }
+    if (playHud.style) {
+      const style = playMode.player.fightingStyle || 'Vanguard';
+      const speed = (playMode.player.moveSpeed || PLAY_PLAYER_SPEED).toFixed(2).replace(/\.00$/, '');
+      playHud.style.textContent = style + ' · Move ' + playMode.player.moveTiles + ' · Speed ' + speed + ' · Slash range ' + PLAY_PLAYER_ACTIONS.slash.range;
+    }
+    if (playHud.attack) {
+      playHud.attack.disabled = playMode.ended || playMode.player.cooldown > 0;
+      playHud.attack.classList.toggle('active', playMode.player.slashTimer > 0);
+    }
+    if (playHud.dash) {
+      playHud.dash.disabled = playMode.ended || playMode.player.dashCooldown > 0;
+      playHud.dash.classList.toggle('active', playMode.player.dashTimer > 0);
+    }
+    if (playHud.guard) {
+      playHud.guard.disabled = playMode.ended || playMode.player.guardCooldown > 0;
+      playHud.guard.classList.toggle('active', playMode.player.guardTimer > 0);
+    }
   }
 
   function tryPlayerAttack() {
     if (!playMode.active || playMode.ended || !playMode.player || !playMode.villain) return false;
     if (playMode.player.cooldown > 0) return true;
-    playMode.player.cooldown = 0.38;
-    playMode.attackPulse = 0.18;
-    const hit = playDistance(playMode.player, playMode.villain) <= PLAY_ATTACK_RANGE;
+    const spec = playMode.player.actions.slash;
+    playMode.player.cooldown = spec.cooldown;
+    playMode.player.slashTimer = spec.duration;
+    playMode.player.action = 'slash';
+    playMode.attackPulse = spec.duration;
+    playFaceToward(playMode.player, playMode.villain);
+    const hit = playDistance(playMode.player, playMode.villain) <= spec.range;
     if (hit && playMode.villain.hp > 0) {
-      playMode.villain.hp -= 1;
+      playMode.villain.hp -= spec.damage;
       playMode.villain.hitFlash = 0.18;
       if (typeof playSfx === 'function') playSfx('knock', 0.55);
       if (playMode.villain.hp <= 0) {
@@ -8180,10 +8484,39 @@
     return true;
   }
 
+  function tryPlayerDash() {
+    if (!playMode.active || playMode.ended || !playMode.player) return false;
+    if (playMode.player.dashCooldown > 0) return true;
+    playMode.player.dashCooldown = PLAY_PLAYER_ACTIONS.dash.cooldown;
+    playMode.player.dashTimer = PLAY_PLAYER_ACTIONS.dash.duration;
+    playMode.player.action = 'dash';
+    if (typeof playSfx === 'function') playSfx('whoosh', 0.42);
+    updatePlayHud();
+    return true;
+  }
+
+  function tryPlayerGuard() {
+    if (!playMode.active || playMode.ended || !playMode.player) return false;
+    if (playMode.player.guardCooldown > 0) return true;
+    playMode.player.guardCooldown = PLAY_PLAYER_ACTIONS.guard.cooldown;
+    playMode.player.guardTimer = PLAY_PLAYER_ACTIONS.guard.duration;
+    playMode.player.guarding = true;
+    playMode.player.action = 'guard';
+    if (typeof playSfx === 'function') playSfx('knock', 0.26);
+    updatePlayHud();
+    return true;
+  }
+
   function tickPlayMode(dt) {
     if (!playMode.active || !playMode.player || !playMode.villain) return;
     playMode.time += dt;
     playMode.player.cooldown = Math.max(0, playMode.player.cooldown - dt);
+    playMode.player.dashCooldown = Math.max(0, playMode.player.dashCooldown - dt);
+    playMode.player.guardCooldown = Math.max(0, playMode.player.guardCooldown - dt);
+    playMode.player.dashTimer = Math.max(0, playMode.player.dashTimer - dt);
+    playMode.player.guardTimer = Math.max(0, playMode.player.guardTimer - dt);
+    playMode.player.slashTimer = Math.max(0, playMode.player.slashTimer - dt);
+    playMode.player.guarding = playMode.player.guardTimer > 0;
     playMode.villain.cooldown = Math.max(0, playMode.villain.cooldown - dt);
     playMode.player.hitFlash = Math.max(0, playMode.player.hitFlash - dt);
     playMode.villain.hitFlash = Math.max(0, playMode.villain.hitFlash - dt);
@@ -8202,7 +8535,16 @@
         vz /= len;
         playMode.player.dirX = vx;
         playMode.player.dirZ = vz;
-        playMoveEntity(playMode.player, vx * PLAY_PLAYER_SPEED * dt, vz * PLAY_PLAYER_SPEED * dt);
+        playMode.player.action = playMode.player.dashTimer > 0 ? 'dash' : 'move';
+        playMode.player.movePhase += dt * (playMode.player.dashTimer > 0 ? 16 : 9);
+        const speed = playMode.player.dashTimer > 0 ? PLAY_PLAYER_DASH_SPEED : playMode.player.moveSpeed;
+        playMoveEntity(playMode.player, vx * speed * dt, vz * speed * dt);
+      } else if (playMode.player.guardTimer > 0) {
+        playMode.player.action = 'guard';
+      } else if (playMode.player.slashTimer > 0) {
+        playMode.player.action = 'slash';
+      } else {
+        playMode.player.action = 'idle';
       }
 
       updateVillain(dt);
@@ -8249,8 +8591,22 @@
     playMode.player = {
       x: setup.player.x,
       z: setup.player.z,
+      authoredX: setup.authoredPlayer.x,
+      authoredZ: setup.authoredPlayer.z,
       hp: PLAY_PLAYER_MAX_HP,
+      moveSpeed: PLAY_PLAYER_SPEED,
+      moveTiles: 3,
+      fightingStyle: 'Vanguard',
+      actions: PLAY_PLAYER_ACTIONS,
       cooldown: 0,
+      dashCooldown: 0,
+      guardCooldown: 0,
+      dashTimer: 0,
+      guardTimer: 0,
+      slashTimer: 0,
+      action: 'idle',
+      movePhase: 0,
+      guarding: false,
       hitFlash: 0,
       dirX: 0,
       dirZ: -1,
@@ -8258,9 +8614,15 @@
     playMode.villain = {
       x: setup.villain.x,
       z: setup.villain.z,
+      authoredX: setup.authoredVillain.x,
+      authoredZ: setup.authoredVillain.z,
       spawnX: setup.villain.x,
       spawnZ: setup.villain.z,
       hp: PLAY_VILLAIN_MAX_HP,
+      moveSpeed: PLAY_VILLAIN_SPEED,
+      moveTiles: 2,
+      fightingStyle: 'Hexblade',
+      actions: PLAY_VILLAIN_ACTIONS,
       cooldown: 0.45,
       hitFlash: 0,
       state: 'patrol',
@@ -8272,7 +8634,8 @@
     playMode.playerMesh = makePlayerPawn();
     playMode.villainMesh = makeVillainPawn();
     playMode.attackMesh = makeAttackRing();
-    playGroup.add(playMode.playerMesh, playMode.villainMesh, playMode.attackMesh);
+    playMode.moveMesh = makeMoveRangeMesh();
+    playGroup.add(playMode.playerMesh, playMode.villainMesh, playMode.attackMesh, playMode.moveMesh);
     playGroup.visible = true;
     playKeys.clear();
     homeTween = null;
@@ -8355,6 +8718,16 @@
       e.preventDefault();
       return true;
     }
+    if (k === 'shift') {
+      tryPlayerDash();
+      e.preventDefault();
+      return true;
+    }
+    if (k === 'g') {
+      tryPlayerGuard();
+      e.preventDefault();
+      return true;
+    }
     if (k === 'escape') {
       exitPlayMode();
       e.preventDefault();
@@ -8383,6 +8756,8 @@
     else enterPlayMode();
   });
   if (playHud.attack) playHud.attack.addEventListener('click', tryPlayerAttack);
+  if (playHud.dash) playHud.dash.addEventListener('click', tryPlayerDash);
+  if (playHud.guard) playHud.guard.addEventListener('click', tryPlayerGuard);
   if (playHud.reset) playHud.reset.addEventListener('click', restartPlayMode);
   if (playHud.exit) playHud.exit.addEventListener('click', () => exitPlayMode());
   if (adventurePanel.objective) adventurePanel.objective.addEventListener('change', () => {
@@ -8397,12 +8772,28 @@
       x: Number(playMode.player.x.toFixed(2)),
       z: Number(playMode.player.z.toFixed(2)),
       hp: playMode.player.hp,
+      authoredX: playMode.player.authoredX,
+      authoredZ: playMode.player.authoredZ,
+      speed: playMode.player.moveSpeed,
+      moveTiles: playMode.player.moveTiles,
+      fightingStyle: playMode.player.fightingStyle,
+      action: playMode.player.action || 'idle',
+      facing: (playMode.player.dirX || 0) < -0.15 ? 'left' : ((playMode.player.dirX || 0) > 0.15 ? 'right' : 'forward'),
+      cooldowns: {
+        slash: Number((playMode.player.cooldown || 0).toFixed(2)),
+        dash: Number((playMode.player.dashCooldown || 0).toFixed(2)),
+        guard: Number((playMode.player.guardCooldown || 0).toFixed(2)),
+      },
     } : null;
     const villain = playMode.villain ? {
       x: Number(playMode.villain.x.toFixed(2)),
       z: Number(playMode.villain.z.toFixed(2)),
+      authoredX: playMode.villain.authoredX,
+      authoredZ: playMode.villain.authoredZ,
       hp: playMode.villain.hp,
       state: playMode.villain.state || 'idle',
+      fightingStyle: playMode.villain.fightingStyle,
+      facing: (playMode.villain.dirX || 0) < -0.15 ? 'left' : ((playMode.villain.dirX || 0) > 0.15 ? 'right' : 'forward'),
       windup: Number((playMode.villain.windup || 0).toFixed(2)),
     } : null;
     const validation = validateGameLayerForPlay();
@@ -8421,6 +8812,10 @@
       collectedRelic: !!playMode.collectedRelic,
       gateUnlocked: !!playMode.gateUnlocked,
       npcLine: playMode.npcLine || '',
+      tactics: {
+        playerActions: Object.keys(PLAY_PLAYER_ACTIONS),
+        villainActions: Object.keys(PLAY_VILLAIN_ACTIONS),
+      },
     }, null, 2);
   };
 
@@ -8442,6 +8837,8 @@
     exit: exitPlayMode,
     restart: restartPlayMode,
     attack: tryPlayerAttack,
+    dash: tryPlayerDash,
+    guard: tryPlayerGuard,
     state: () => playMode,
   };
 

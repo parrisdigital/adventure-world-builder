@@ -27,7 +27,7 @@ Current prompt: Add Adventure UX and objective gameplay polish: Adventure Panel,
 - Replaced the local `/auth.js` request with a conditional production-only loader, added `npm run smoke:play`, and verified the smoke script exits cleanly without leaving server/browser processes running.
 - Rewrote `README.md` for the public Adventure World Builder fork, with explicit Tiny World Builder/Jason Kneen attribution, AGPL guidance, run/deploy instructions, architecture notes, smoke test docs, and roadmap. Updated package metadata to `adventure-world-builder`, the fork URL, and `AGPL-3.0-only`.
 - Added an Adventure panel for objective selection, required marker status, validation errors, and one-click Play Mode entry.
-- Prevented adventure markers from being placed on blocked tiles during editing, added editor marker labels, and softened/hidden inactive markers during Play Mode.
+- Added editor marker labels and softened/hidden inactive markers during Play Mode; marker authoring is now flexible, with Play Mode resolving blocked authored spawn markers to the nearest valid standing tile.
 - Made objective objects reactive: chests open after relic collection, gates open after unlocking, exits only surface for escape objectives, and NPC markers can surface a short quest line.
 - Expanded `npm run smoke:play` to cover all four objective types, NPC dialogue, and export/import preservation for `gameLayer`.
 - Updated `world.schema.json`, the embedded `WORLD_SCHEMA`, and README documentation for `gameLayer`, adventure markers, objective gameplay, `soft` camera mode, and AGPL/package metadata alignment.
@@ -36,3 +36,5 @@ Current prompt: Add Adventure UX and objective gameplay polish: Adventure Panel,
 - Corrected authorship language so Adventure World Builder is presented as a Parris Digital project while crediting Tiny World Builder/Jason Kneen as the original upstream foundation.
 - Vendored Three.js r128 locally after the deployed page failed to boot when the external CDN script did not define `window.THREE`.
 - Fixed the production blank-map boot issue by replacing the optional auth `document.write()` loader, adding an `auth.js` placeholder, and guarding the smoke test against script-tag swallowing.
+- Generated character/action and left/right turnaround concept sheets under `assets/concepts/`, then translated them into procedural hero, villain, NPC, and treasure chest models.
+- Added a first tactics-style character foundation: Vanguard hero metadata, Hexblade villain metadata, Slash/Dash/Guard actions, movement speed, action cooldowns, left/right facing, sword slash animation, guard stance, dash speed, and smoke coverage for flexible spawns plus directional combat.

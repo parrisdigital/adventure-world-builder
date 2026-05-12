@@ -24,6 +24,11 @@ If package metadata in the upstream project differs from the root `LICENSE`, tre
 
 Because this project is based on an AGPL-licensed work, public hosted modified versions should make their corresponding source code available.
 
+## Project Concept Assets
+
+- Character/action and left/right turnaround concept sheets are stored in `assets/concepts/`.
+- These concept assets were generated for Adventure World Builder and are used as visual direction for the procedural in-app character models.
+
 ## Third-Party Runtime Assets
 
 - Three.js r128 is vendored in `vendor/three-r128.min.js` for reliable static hosting.

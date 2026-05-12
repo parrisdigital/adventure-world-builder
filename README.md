@@ -22,6 +22,8 @@ Terrain/object rules are normalized by the renderer: crops force dirt underneath
 
 Play Mode drops a character into the authored world. Movement respects blocked terrain and objects, the camera follows the player, the villain patrols and chases locally, and objectives can complete the board before returning to the editor.
 
+The current combat slice uses a tactics-style foundation: the hero has a `Vanguard` fighting style with Move 3, movement speed metadata, Slash, Dash, and Guard actions. The villain uses a `Hexblade` style with local windup/strike behavior. Player and villain meshes face left or right based on movement and opponent position.
+
 ## Adventure Markers
 
 The current game layer supports:
@@ -37,6 +39,17 @@ The current game layer supports:
 - Local deterministic villain behavior: patrol, guard radius, line-of-sight, attack windup, and retreat at low health
 
 Adventure markers are stored in `gameLayer`, separate from terrain/object tile data, and are exported/imported with world JSON. The editor includes an Adventure panel for choosing the objective, seeing required markers, and catching invalid setup before Play Mode starts.
+
+Spawn and adventure markers can be placed on authored world cells without forcing the user back to roads only. If a spawn marker sits on a blocked authored tile, Play Mode resolves the character to the nearest valid standing tile while preserving the marker's authored position.
+
+## Character Direction
+
+Character concept sheets live in `assets/concepts/`:
+
+- `character-action-sheet.png`
+- `character-turnaround-sheet.png`
+
+The live game currently translates those references into procedural Three.js pieces rather than sprite sheets. This keeps the existing toy-diorama style, supports left/right facing through 3D rotation, and avoids adding a heavier asset pipeline before the tactics rules are stable.
 
 ## Current Objectives
 
@@ -100,7 +113,9 @@ Deployment notes:
 | Clear to grass | `C` |
 | Enter Play Mode | Play button |
 | Move in Play Mode | WASD or arrow keys |
-| Attack in Play Mode | `Space` or Attack button |
+| Slash in Play Mode | `Space` or Slash button |
+| Dash in Play Mode | `Shift` or Dash button |
+| Guard in Play Mode | `G` or Guard button |
 | Exit Play Mode | `Esc` or Editor button |
 
 ## Editor Tools
@@ -145,6 +160,9 @@ The smoke test starts a temporary static server and headless Chrome session, the
 - in-app credits/source attribution opens from the toolbar
 - `gameLayer` markers can be set
 - Play Mode starts from explicit markers
+- flexible spawn placement resolves blocked authored markers to valid standing tiles
+- tactics metadata includes fighting style, movement speed, and Slash/Dash/Guard
+- player facing switches left/right when attacking across the board
 - `defeat_villain`, `collect_relic`, `unlock_gate`, and `escape` objectives complete
 - NPC markers can surface a short dialogue line
 - objective validation catches missing required markers

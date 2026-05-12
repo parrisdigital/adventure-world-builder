@@ -194,6 +194,40 @@ async function main() {
     if (!defeatEntered.ok || defeatEntered.state.mode !== 'play') {
       throw new Error('Defeat scenario did not start: ' + JSON.stringify(defeatEntered));
     }
+    if (defeatEntered.state.player.fightingStyle !== 'Vanguard' ||
+        defeatEntered.state.player.speed <= 0 ||
+        !defeatEntered.state.tactics.playerActions.includes('dash') ||
+        !defeatEntered.state.tactics.playerActions.includes('guard') ||
+        defeatEntered.state.villain.fightingStyle !== 'Hexblade') {
+      throw new Error('Tactics metadata missing from play state: ' + JSON.stringify(defeatEntered.state));
+    }
+    const facingAndActions = await evaluate(`(() => {
+      const play = window.__tinyworldPlay.state();
+      play.player.x = 5;
+      play.player.z = 4;
+      play.villain.x = 3;
+      play.villain.z = 4;
+      window.__tinyworldPlay.attack();
+      const left = JSON.parse(window.render_game_to_text());
+      window.advanceTime(500);
+      play.villain.x = 7;
+      play.villain.z = 4;
+      window.__tinyworldPlay.attack();
+      const right = JSON.parse(window.render_game_to_text());
+      window.__tinyworldPlay.dash();
+      const dashed = JSON.parse(window.render_game_to_text());
+      window.advanceTime(400);
+      window.__tinyworldPlay.guard();
+      const guarded = JSON.parse(window.render_game_to_text());
+      return { left, right, dashed, guarded };
+    })()`);
+    if (facingAndActions.left.player.facing !== 'left' ||
+        facingAndActions.right.player.facing !== 'right' ||
+        facingAndActions.dashed.player.action !== 'dash' ||
+        facingAndActions.guarded.player.action !== 'guard') {
+      throw new Error('Directional facing or tactics actions failed: ' + JSON.stringify(facingAndActions));
+    }
+    await evaluate(`window.__tinyworldPlay.restart()`);
     const defeat = await evaluate(`(() => {
       const play = window.__tinyworldPlay.state();
       play.player.x = play.villain.x;
@@ -273,6 +307,30 @@ async function main() {
     })()`);
     if (validation.ok || !validation.errors.some(e => e.includes('Chest')) || !validation.errors.some(e => e.includes('Gate'))) {
       throw new Error('Unlock objective validation did not require chest and gate markers');
+    }
+
+    const flexibleSpawn = await evaluate(`(() => {
+      window.__tinyworldPlay.exit({ silent: true, restoreCamera: false });
+      window.__tinyworldGameLayer.clear();
+      setCell(1, 1, { terrain: 'grass', terrainFloors: 1, kind: 'house', floors: 1 });
+      window.__tinyworldGameLayer.setObjective('defeat_villain');
+      const placed = [
+        window.__tinyworldGameLayer.setMarker('playerSpawn', 1, 1),
+        window.__tinyworldGameLayer.setMarker('villainSpawn', 5, 3),
+      ];
+      const layer = window.__tinyworldGameLayer.state();
+      const validation = window.__tinyworldGameLayer.validate();
+      const entered = window.__tinyworldPlay.enter();
+      const state = JSON.parse(window.render_game_to_text());
+      return { placed, layer, validation, entered, state };
+    })()`);
+    if (!flexibleSpawn.placed.every(Boolean) ||
+        !flexibleSpawn.validation.ok ||
+        !flexibleSpawn.entered ||
+        flexibleSpawn.layer.markers.playerSpawn.x !== 1 ||
+        flexibleSpawn.layer.markers.playerSpawn.z !== 1 ||
+        (flexibleSpawn.state.player.x === 1 && flexibleSpawn.state.player.z === 1)) {
+      throw new Error('Flexible spawn marker placement did not resolve correctly: ' + JSON.stringify(flexibleSpawn));
     }
 
     const preserved = await evaluate(`(() => {
