@@ -49,6 +49,7 @@ Character concept sheets live in `assets/concepts/`:
 - `character-action-sheet.png`
 - `character-turnaround-sheet.png`
 - `character-direction-sheet.png`
+- `city-environment-sheet.png`
 
 Playable sprite assets live in `assets/sprites/` and are generated from the concept sheets with:
 
@@ -78,6 +79,8 @@ Saved worlds include a `worldTheme` field. The first supported themes are:
 The Adventure panel includes a world style selector. Applying a theme changes the active tool palette, converting a world maps compatible objects to theme-specific variants, and starting a new themed world loads a preset board. The Japanese pack is playable now with sakura, bamboo, stone lanterns, torii gates, pagodas, temple halls, and watchtowers. China and City are scaffolded as theme packs and support conversion/preset contracts for further asset expansion. Future character packs should be theme-specific: Japan should use appropriate local outfits and villains, City should use urban civilians/guards/villains, and each theme should ship matching terrain, homes, props, roads, and encounter objects rather than recoloring the classic set.
 
 See [docs/theme-pack-execution-plan.md](docs/theme-pack-execution-plan.md) for the theme-by-theme asset and gameplay execution plan.
+
+Directional props and future vehicles use the same placement transform model already used by the editor ghost preview. Press `R` to rotate the current preview, `Shift+R` to rotate backwards, Left/Right arrows to rotate, and Up/Down arrows to nudge before placement. Export/import preserves those transforms so cars, gates, benches, signs, and directional buildings can face the correct way.
 
 ## Current Objectives
 

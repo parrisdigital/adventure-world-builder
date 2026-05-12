@@ -1697,7 +1697,7 @@
   <div class="flyout" id="flyout" hidden></div>
 
   <div class="help">
-    Tools: <kbd>1-9</kbd> + letters · <kbd>E</kbd> erase · Right-drag / <kbd>Space</kbd> drag pan · <kbd>P</kbd> perspective
+    Tools: <kbd>1-9</kbd> + letters · <kbd>R</kbd> rotate · Arrow keys adjust preview · <kbd>Space</kbd> pan · <kbd>P</kbd> perspective
   </div>
 
   <div class="adventure-panel" id="adventure-panel">
@@ -7894,13 +7894,19 @@
       selectTool(shortcutTool);
       return;
     }
+    if (k === 'r' && ghostPreview) {
+      ghostRotation = snapRot(ghostRotation + (e.shiftKey ? -GHOST_ROT_STEP : GHOST_ROT_STEP));
+      updateGhostPlacement();
+      e.preventDefault();
+      return;
+    }
     if (k === 'c') doClear();
     else if (k === 'p' || k === 'i') togglePerspective();
     else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
       e.preventDefault();
       // Hold Shift to keep the original pan behaviour. Otherwise
-      // arrows steer the live ghost: left/right rotate, up/down
-      // nudge along Z, shift+left/right nudges along X.
+      // arrows steer the live ghost: left/right rotate and up/down
+      // nudge along Z.
       if (e.shiftKey || !ghostPreview) {
         if (e.key === 'ArrowLeft')       panCameraByCells(-1, 0);
         else if (e.key === 'ArrowRight') panCameraByCells(1, 0);
@@ -11246,6 +11252,28 @@
             "center-z"
           ],
           "description": "For fences only. n/s/e/w place one fence leaf on that tile edge. center-x and center-z place a centre-line fence."
+        },
+        "transform": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Optional placement transform for directional objects and props. rotationY is snapped to cardinal 90-degree facings in the editor; offsetX/offsetZ nudge the object inside the tile.",
+          "properties": {
+            "rotationY": {
+              "type": "number",
+              "minimum": -3.141592653589793,
+              "maximum": 3.141592653589793
+            },
+            "offsetX": {
+              "type": "number",
+              "minimum": -0.32,
+              "maximum": 0.32
+            },
+            "offsetZ": {
+              "type": "number",
+              "minimum": -0.32,
+              "maximum": 0.32
+            }
+          }
         }
       }
     }
@@ -11343,6 +11371,7 @@
       'Set worldTheme to classic, japan, china, or city when the prompt asks for a themed world. Theme-specific supported pieces include sakura, bamboo, lantern, torii, and house buildingType temple|pagoda|watchtower.',
       'Only emit cells that differ from defaults — the renderer fills the rest.',
       'Houses cluster automatically when buildingType is null: adjacent houses merge into linear, L/T/+, or 2x2 forms. To force a single-cell variant set buildingType to cottage|manor|tower|turret|skyscraper.',
+      'Use optional cell.transform for directional props, vehicles, gates, signs, benches, and forced building variants when orientation matters. rotationY should be one of -1.5708, 0, 1.5708, or 3.1416; offsetX/offsetZ should stay between -0.32 and 0.32.',
       'Repeat-tapping the same object increases floors/intensity: houses grow upward; trees, rocks, bridges, fences, tufts, and crops become larger, denser, or more detailed.',
       'A fence is a single side/leaf, not a full square. Set fenceSide to n|s|e|w for tile edges or center-x|center-z for centre-line walls.',
       'Fences placed on two perpendicular sides of a house can promote it to a castle turret and turn connected fence cells into stone wall — use this for castles.',
@@ -11434,12 +11463,12 @@
     const seen = new Set();
     for (let i = 0; i < data.cells.length; i++) {
       const c = data.cells[i];
-      let x, z, terrain, kind, floors, buildingType, terrainFloors, fenceSide;
+      let x, z, terrain, kind, floors, buildingType, terrainFloors, fenceSide, transform;
       if (Array.isArray(c)) {
         if (c.length < 4) return 'cells[' + i + '] tuple too short';
-        [x, z, terrain, kind, floors, buildingType, terrainFloors, fenceSide] = c;
+        [x, z, terrain, kind, floors, buildingType, terrainFloors, fenceSide, , transform] = c;
       } else if (c && typeof c === 'object') {
-        ({ x, z, terrain, kind, floors, buildingType, terrainFloors, fenceSide } = c);
+        ({ x, z, terrain, kind, floors, buildingType, terrainFloors, fenceSide, transform } = c);
       } else {
         return 'cells[' + i + '] not object';
       }
@@ -11460,6 +11489,18 @@
       const fs = fenceSide === undefined ? null : fenceSide;
       if (!okFenceSide.has(fs)) return 'cells[' + i + '].fenceSide invalid: ' + fenceSide;
       if (fs && k !== 'fence') return 'cells[' + i + '].fenceSide only allowed on fence';
+      if (transform !== undefined && transform !== null) {
+        const tr = Array.isArray(transform)
+          ? { rotationY: transform[0], offsetX: transform[1], offsetZ: transform[2] }
+          : transform;
+        if (!tr || typeof tr !== 'object') return 'cells[' + i + '].transform invalid';
+        const rotationY = tr.rotationY === undefined ? 0 : +tr.rotationY;
+        const offsetX = tr.offsetX === undefined ? 0 : +tr.offsetX;
+        const offsetZ = tr.offsetZ === undefined ? 0 : +tr.offsetZ;
+        if (!Number.isFinite(rotationY) || rotationY < -Math.PI || rotationY > Math.PI) return 'cells[' + i + '].transform.rotationY out of range';
+        if (!Number.isFinite(offsetX) || offsetX < -0.32 || offsetX > 0.32) return 'cells[' + i + '].transform.offsetX out of range';
+        if (!Number.isFinite(offsetZ) || offsetZ < -0.32 || offsetZ > 0.32) return 'cells[' + i + '].transform.offsetZ out of range';
+      }
     }
     if (data.gameLayer !== undefined && data.gameLayer !== null) {
       if (typeof data.gameLayer !== 'object' || Array.isArray(data.gameLayer)) return 'gameLayer must be an object';

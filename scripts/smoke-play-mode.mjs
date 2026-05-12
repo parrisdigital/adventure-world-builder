@@ -201,7 +201,16 @@ async function main() {
         gridSize: 8,
         worldTheme: 'city',
         cells: [
-          { x: 1, z: 1, terrain: 'path', kind: 'house', buildingType: 'skyscraper', floors: 4, terrainFloors: 1 },
+          {
+            x: 1,
+            z: 1,
+            terrain: 'path',
+            kind: 'house',
+            buildingType: 'skyscraper',
+            floors: 4,
+            terrainFloors: 1,
+            transform: { rotationY: Math.PI / 2, offsetX: 0.12, offsetZ: -0.06 },
+          },
         ],
         gameLayer: {
           objective: 'defeat_villain',
@@ -212,6 +221,8 @@ async function main() {
         },
       });
       const importedState = JSON.parse(window.render_game_to_text());
+      const importedCells = snapshotCells();
+      const importedTransformCell = importedCells.find(c => Array.isArray(c) && c[0] === 1 && c[1] === 1);
       const themeLabels = window.__tinyworldTheme.labels();
       window.__tinyworldTheme.preset('classic');
       return {
@@ -220,6 +231,7 @@ async function main() {
         imported,
         importedTheme: importedState.worldTheme,
         importedLayer: importedState.gameLayer,
+        importedTransform: importedTransformCell && importedTransformCell[9],
         labels: Object.keys(themeLabels),
       };
     })()`);
@@ -227,6 +239,10 @@ async function main() {
         !themeContract.hasThemedPieces ||
         !themeContract.imported ||
         themeContract.importedTheme !== 'city' ||
+        !Array.isArray(themeContract.importedTransform) ||
+        Math.abs(themeContract.importedTransform[0] - Math.PI / 2) > 0.0001 ||
+        Math.abs(themeContract.importedTransform[1] - 0.12) > 0.0001 ||
+        Math.abs(themeContract.importedTransform[2] + 0.06) > 0.0001 ||
         !themeContract.labels.includes('classic') ||
         !themeContract.labels.includes('japan') ||
         !themeContract.labels.includes('china') ||

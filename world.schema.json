@@ -113,6 +113,28 @@
           "type": ["string", "null"],
           "enum": [null, "n", "s", "e", "w", "center-x", "center-z"],
           "description": "For fences only. n/s/e/w place one fence leaf on that tile edge. center-x and center-z place a centre-line fence."
+        },
+        "transform": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Optional placement transform for directional objects and props. rotationY is snapped to cardinal 90-degree facings in the editor; offsetX/offsetZ nudge the object inside the tile.",
+          "properties": {
+            "rotationY": {
+              "type": "number",
+              "minimum": -3.141592653589793,
+              "maximum": 3.141592653589793
+            },
+            "offsetX": {
+              "type": "number",
+              "minimum": -0.32,
+              "maximum": 0.32
+            },
+            "offsetZ": {
+              "type": "number",
+              "minimum": -0.32,
+              "maximum": 0.32
+            }
+          }
         }
       }
     }

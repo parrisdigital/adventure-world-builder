@@ -27,6 +27,7 @@ Because this project is based on an AGPL-licensed work, public hosted modified v
 ## Project Concept And Sprite Assets
 
 - Character/action, turnaround, and true-direction concept sheets are stored in `assets/concepts/`.
+- City environment concept sheet exploration is stored in `assets/concepts/city-environment-sheet.png`.
 - Playable transparent sprites are extracted into `assets/sprites/` and indexed by `assets/sprites/manifest.json`.
 - The sprite extraction/validation scripts are part of this fork and are used to keep runtime characters complete, padded, and free of cropped body or weapon fragments.
 - The direction sheet is used for true back-facing character frames when characters walk up the visible board.
