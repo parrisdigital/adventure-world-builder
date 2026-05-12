@@ -209,25 +209,40 @@ async function main() {
       const play = window.__tinyworldPlay.state();
       const movedOk = window.__tinyworldPlay.moveTo(0, 6);
       const moved = JSON.parse(window.render_game_to_text());
+      window.advanceTime(320);
+      const movedResolved = JSON.parse(window.render_game_to_text());
       window.__tinyworldPlay.attack();
       const preview = JSON.parse(window.render_game_to_text());
+      window.__tinyworldPlay.restart();
+      const moveFacingOk = window.__tinyworldPlay.moveTo(2, 7);
+      const moveRight = JSON.parse(window.render_game_to_text());
+      window.advanceTime(500);
+      const moveRightResolved = JSON.parse(window.render_game_to_text());
       window.__tinyworldPlay.restart();
       const duel = window.__tinyworldPlay.state();
       duel.player.x = 5;
       duel.player.z = 4;
+      duel.player.renderX = 5;
+      duel.player.renderZ = 4;
       duel.villain.x = 4;
       duel.villain.z = 4;
+      duel.villain.renderX = 4;
+      duel.villain.renderZ = 4;
       window.__tinyworldPlay.attack();
       const left = JSON.parse(window.render_game_to_text());
       window.advanceTime(500);
       duel.villain.x = 6;
       duel.villain.z = 4;
+      duel.villain.renderX = 6;
+      duel.villain.renderZ = 4;
       window.__tinyworldPlay.attack();
       const right = JSON.parse(window.render_game_to_text());
       window.__tinyworldPlay.restart();
       window.__tinyworldPlay.dash();
       const dashSelected = JSON.parse(window.render_game_to_text());
       const dashMovedOk = window.__tinyworldPlay.moveTo(3, 7);
+      const dashMoving = JSON.parse(window.render_game_to_text());
+      window.advanceTime(450);
       const dashed = JSON.parse(window.render_game_to_text());
       window.__tinyworldPlay.restart();
       window.__tinyworldPlay.guard();
@@ -236,26 +251,45 @@ async function main() {
       const enemy = window.__tinyworldPlay.state();
       enemy.player.x = 3;
       enemy.player.z = 4;
+      enemy.player.renderX = 3;
+      enemy.player.renderZ = 4;
       enemy.villain.x = 4;
       enemy.villain.z = 4;
+      enemy.villain.renderX = 4;
+      enemy.villain.renderZ = 4;
       const hpBeforeEnemy = enemy.player.hp;
       window.__tinyworldPlay.endTurn();
       window.advanceTime(500);
       const enemyResolved = JSON.parse(window.render_game_to_text());
-      return { movedOk, moved, preview, left, right, dashSelected, dashMovedOk, dashed, guarded, hpBeforeEnemy, enemyResolved };
+      return { movedOk, moved, movedResolved, preview, moveFacingOk, moveRight, moveRightResolved, left, right, dashSelected, dashMovedOk, dashMoving, dashed, guarded, hpBeforeEnemy, enemyResolved };
     })()`);
     if (!tacticsActions.movedOk ||
         tacticsActions.moved.player.x !== 0 ||
         tacticsActions.moved.player.z !== 6 ||
+        !tacticsActions.moved.player.moving ||
+        tacticsActions.moved.player.pathLength < 2 ||
+        tacticsActions.moved.activePath.length < 2 ||
         tacticsActions.moved.actionPoints.player !== 1 ||
+        tacticsActions.movedResolved.player.moving ||
+        tacticsActions.movedResolved.player.renderX !== 0 ||
+        tacticsActions.movedResolved.player.renderZ !== 6 ||
         tacticsActions.preview.selectedAction !== 'slash' ||
         tacticsActions.preview.attackTiles <= 0 ||
+        !tacticsActions.moveFacingOk ||
+        !tacticsActions.moveRight.player.moving ||
+        tacticsActions.moveRight.player.facing !== 'right' ||
+        tacticsActions.moveRight.activePath.length < 2 ||
+        tacticsActions.moveRightResolved.player.moving ||
         tacticsActions.left.player.facing !== 'left' ||
         tacticsActions.right.player.facing !== 'right' ||
         tacticsActions.dashSelected.selectedAction !== 'dash' ||
         !tacticsActions.dashMovedOk ||
-        tacticsActions.dashed.player.action !== 'dash' ||
-        tacticsActions.dashed.actionPoints.player !== 0 ||
+        !tacticsActions.dashMoving.player.moving ||
+        tacticsActions.dashMoving.activePath.length < 2 ||
+        tacticsActions.dashMoving.player.action !== 'dash' ||
+        tacticsActions.dashMoving.actionPoints.player !== 0 ||
+        tacticsActions.dashMoving.turn !== 'player' ||
+        tacticsActions.dashed.player.moving ||
         tacticsActions.dashed.turn !== 'enemy' ||
         tacticsActions.guarded.player.action !== 'guard' ||
         tacticsActions.guarded.turn !== 'enemy' ||
@@ -268,6 +302,8 @@ async function main() {
       const play = window.__tinyworldPlay.state();
       play.player.x = play.villain.x;
       play.player.z = Math.max(0, play.villain.z - 0.6);
+      play.player.renderX = play.player.x;
+      play.player.renderZ = play.player.z;
       for (let i = 0; i < 4; i++) {
         window.__tinyworldPlay.attack();
         window.advanceTime(420);
@@ -286,6 +322,8 @@ async function main() {
       const play = window.__tinyworldPlay.state();
       play.player.x = 4;
       play.player.z = 6;
+      play.player.renderX = play.player.x;
+      play.player.renderZ = play.player.z;
       window.advanceTime(120);
       return JSON.parse(window.render_game_to_text()).npcLine;
     })()`);
@@ -294,6 +332,8 @@ async function main() {
       const play = window.__tinyworldPlay.state();
       play.player.x = 3;
       play.player.z = 7;
+      play.player.renderX = play.player.x;
+      play.player.renderZ = play.player.z;
       window.advanceTime(120);
       return JSON.parse(window.render_game_to_text());
     })()`);
@@ -309,9 +349,13 @@ async function main() {
       const play = window.__tinyworldPlay.state();
       play.player.x = 3;
       play.player.z = 7;
+      play.player.renderX = play.player.x;
+      play.player.renderZ = play.player.z;
       window.advanceTime(120);
       play.player.x = 4;
       play.player.z = 5;
+      play.player.renderX = play.player.x;
+      play.player.renderZ = play.player.z;
       window.advanceTime(120);
       return JSON.parse(window.render_game_to_text());
     })()`);
@@ -328,6 +372,8 @@ async function main() {
       const play = window.__tinyworldPlay.state();
       play.player.x = 3;
       play.player.z = 0;
+      play.player.renderX = play.player.x;
+      play.player.renderZ = play.player.z;
       window.advanceTime(120);
       return JSON.parse(window.render_game_to_text());
     })()`);

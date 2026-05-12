@@ -2381,6 +2381,9 @@
     playDashTile: new THREE.MeshBasicMaterial({ color: 0x2c9a78, transparent: true, opacity: 0.24, depthWrite: false }),
     playAttackTile:new THREE.MeshBasicMaterial({ color: 0xf2c849, transparent: true, opacity: 0.25, depthWrite: false }),
     playTarget:   new THREE.MeshBasicMaterial({ color: 0xb84838, transparent: true, opacity: 0.32, depthWrite: false }),
+    playPathTile: new THREE.MeshBasicMaterial({ color: 0x3a72c8, transparent: true, opacity: 0.30, depthWrite: false }),
+    playDestination:new THREE.MeshBasicMaterial({ color: 0x2c9a78, transparent: true, opacity: 0.48, depthWrite: false }),
+    spriteShadow: new THREE.MeshBasicMaterial({ color: 0x251a10, transparent: true, opacity: 0.18, depthWrite: false }),
     markerPlayer: new THREE.MeshLambertMaterial({ color: 0x3a72c8 }),
     markerVillain:new THREE.MeshLambertMaterial({ color: 0xb84838 }),
     markerChest:  new THREE.MeshLambertMaterial({ color: 0xd9a82b }),
@@ -4564,7 +4567,7 @@
     return sprite;
   }
 
-  function makeHeroCharacter(opts) {
+  function makeProceduralHeroCharacter(opts) {
     opts = opts || {};
     const g = new THREE.Group();
     g.name = opts.name || 'heroCharacter';
@@ -4612,7 +4615,7 @@
     return castReceive(g);
   }
 
-  function makeVillainCharacter(opts) {
+  function makeProceduralVillainCharacter(opts) {
     opts = opts || {};
     const g = new THREE.Group();
     g.name = opts.name || 'villainCharacter';
@@ -4650,7 +4653,7 @@
     return castReceive(g);
   }
 
-  function makeNpcCharacter(variant, opts) {
+  function makeProceduralNpcCharacter(variant, opts) {
     opts = opts || {};
     const g = new THREE.Group();
     g.name = 'npcCharacter:' + (variant || 'villager');
@@ -4689,7 +4692,7 @@
     return castReceive(g);
   }
 
-  function makeTreasureChest(opened) {
+  function makeProceduralTreasureChest(opened) {
     const g = new THREE.Group();
     g.name = opened ? 'treasureChest:open' : 'treasureChest:closed';
     const base = new THREE.Mesh(roundedBox(0.38, 0.20, 0.28, 0.04), M.bridgeWood);
@@ -4712,6 +4715,171 @@
     glow.visible = !!opened;
     g.add(base, lid, bandA, bandB, latch, relic, glow);
     return castReceive(g);
+  }
+
+  const SPRITE_ROOT = 'assets/sprites/';
+  const PLAY_SPRITES = {
+    hero: {
+      idle: { right: 'hero/idle-right.png', left: 'hero/idle-left.png' },
+      move: { right: 'hero/move-right.png', left: 'hero/move-left.png' },
+      dash: { right: 'hero/dash-right.png', left: 'hero/dash-left.png' },
+      guard: { right: 'hero/guard-right.png', left: 'hero/guard-left.png' },
+      slash: { right: 'hero/slash-right.png', left: 'hero/slash-left.png' },
+      hit: { right: 'hero/hit-right.png', left: 'hero/hit-left.png' },
+    },
+    villain: {
+      idle: { right: 'villain/idle-right.png', left: 'villain/idle-left.png' },
+      move: { right: 'villain/move-right.png', left: 'villain/move-left.png' },
+      guard: { right: 'villain/guard-right.png', left: 'villain/guard-left.png' },
+      attack: { right: 'villain/attack-right.png', left: 'villain/attack-left.png' },
+      hit: { right: 'villain/hit-right.png', left: 'villain/hit-left.png' },
+    },
+    npc: {
+      villager: { default: 'npc/villager.png' },
+      farmer: { default: 'npc/farmer.png' },
+      guard: { default: 'npc/guard.png' },
+    },
+    chest: {
+      closed: { default: 'chest/closed.png' },
+      open: { default: 'chest/open.png' },
+      relic: { default: 'chest/relic.png' },
+    },
+  };
+  const spriteTextureLoader = new THREE.TextureLoader();
+  const spriteTextureCache = new Map();
+
+  function spriteAssetPath(role, action, direction) {
+    const roleSet = PLAY_SPRITES[role];
+    if (!roleSet) return '';
+    const actionSet = roleSet[action] || roleSet.idle || roleSet.closed || roleSet.villager;
+    if (!actionSet) return '';
+    return actionSet[direction] || actionSet.default || actionSet.right || actionSet.left || '';
+  }
+
+  function loadSpriteTexture(assetPath, onReady, onError) {
+    if (!assetPath) return null;
+    const url = SPRITE_ROOT + assetPath;
+    if (spriteTextureCache.has(url)) {
+      const cached = spriteTextureCache.get(url);
+      if (cached.userData.loaded && onReady) onReady(cached);
+      if (cached.userData.error && onError) onError(cached);
+      return cached;
+    }
+    const texture = spriteTextureLoader.load(url, tex => {
+      tex.userData = tex.userData || {};
+      tex.userData.loaded = true;
+      tex.userData.error = false;
+      tex.encoding = THREE.sRGBEncoding;
+      tex.minFilter = THREE.LinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+      tex.generateMipmaps = false;
+      if (onReady) onReady(tex);
+    }, undefined, () => {
+      texture.userData = texture.userData || {};
+      texture.userData.loaded = false;
+      texture.userData.error = true;
+      if (onError) onError(texture);
+    });
+    texture.userData = texture.userData || {};
+    texture.userData.loaded = false;
+    texture.userData.error = false;
+    texture.encoding = THREE.sRGBEncoding;
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    texture.generateMipmaps = false;
+    spriteTextureCache.set(url, texture);
+    return texture;
+  }
+
+  function makeSpriteActor(role, action, opts, fallback) {
+    opts = opts || {};
+    const g = new THREE.Group();
+    g.name = opts.name || (role + 'SpriteActor');
+    const shadow = new THREE.Mesh(new THREE.CircleGeometry(opts.shadowRadius || 0.27, 26), M.spriteShadow);
+    shadow.name = role + 'SpriteShadow';
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = 0.012;
+    shadow.renderOrder = 2;
+    const material = new THREE.SpriteMaterial({
+      transparent: true,
+      depthWrite: false,
+      depthTest: true,
+      alphaTest: 0.035,
+      color: 0xffffff,
+    });
+    const sprite = new THREE.Sprite(material);
+    sprite.name = role + 'Sprite';
+    sprite.center.set(0.5, 0.02);
+    sprite.position.y = opts.spriteY || 0.015;
+    sprite.scale.set(opts.spriteW || 0.88, opts.spriteH || 0.88, 1);
+    sprite.renderOrder = 8;
+    if (fallback) {
+      fallback.name = role + 'ProceduralFallback';
+      fallback.visible = false;
+      g.add(fallback);
+    }
+    g.add(shadow, sprite);
+    g.userData.spriteActor = {
+      role,
+      action: '',
+      direction: '',
+      material,
+      sprite,
+      fallback: fallback || null,
+    };
+    if (opts.scale) g.scale.setScalar(opts.scale);
+    setSpriteActorFrame(g, action || 'idle', opts.direction || 'right');
+    return g;
+  }
+
+  function setSpriteActorFrame(actor, action, direction) {
+    const state = actor && actor.userData && actor.userData.spriteActor;
+    if (!state) return false;
+    const normalizedDirection = direction === 'left' ? 'left' : 'right';
+    const assetPath = spriteAssetPath(state.role, action, normalizedDirection);
+    if (!assetPath) return false;
+    if (state.action === action && state.direction === normalizedDirection) return true;
+    state.action = action;
+    state.direction = normalizedDirection;
+    const texture = loadSpriteTexture(assetPath, tex => {
+      if (state.material.map !== tex) return;
+      state.sprite.visible = true;
+      if (state.fallback) state.fallback.visible = false;
+    }, () => {
+      state.sprite.visible = false;
+      if (state.fallback) state.fallback.visible = true;
+    });
+    if (!texture) return false;
+    state.material.map = texture;
+    state.material.needsUpdate = true;
+    state.sprite.visible = !texture.userData.error;
+    if (state.fallback) state.fallback.visible = !!texture.userData.error;
+    return true;
+  }
+
+  function makeHeroCharacter(opts) {
+    opts = opts || {};
+    const fallback = makeProceduralHeroCharacter({ name: 'heroFallback' });
+    return makeSpriteActor('hero', 'idle', Object.assign({ spriteW: 1.24, spriteH: 1.24, shadowRadius: 0.32 }, opts), fallback);
+  }
+
+  function makeVillainCharacter(opts) {
+    opts = opts || {};
+    const fallback = makeProceduralVillainCharacter({ name: 'villainFallback' });
+    return makeSpriteActor('villain', 'idle', Object.assign({ spriteW: 1.32, spriteH: 1.32, shadowRadius: 0.35 }, opts), fallback);
+  }
+
+  function makeNpcCharacter(variant, opts) {
+    opts = opts || {};
+    const action = variant === 'farmer' || variant === 'guard' ? variant : 'villager';
+    const fallback = makeProceduralNpcCharacter(variant, { name: 'npcFallback' });
+    return makeSpriteActor('npc', action, Object.assign({ direction: 'default', spriteW: 1.02, spriteH: 1.02, shadowRadius: 0.26 }, opts), fallback);
+  }
+
+  function makeTreasureChest(opened, relic) {
+    const fallback = makeProceduralTreasureChest(opened || relic);
+    const action = relic ? 'relic' : (opened ? 'open' : 'closed');
+    return makeSpriteActor('chest', action, { name: 'treasureChest:' + action, direction: 'default', spriteW: 0.92, spriteH: 0.92, shadowRadius: 0.24 }, fallback);
   }
 
   function makeGameMarkerMesh(type, opts) {
@@ -7844,6 +8012,9 @@
   const PLAY_PLAYER_RADIUS = 0.28;
   const PLAY_TACTICS_MAX_AP = 2;
   const PLAY_TACTICS_ENEMY_DELAY = 0.34;
+  const PLAY_TILE_MOVE_SPEED = 5.2;
+  const PLAY_TILE_DASH_SPEED = 8.4;
+  const PLAY_TILE_EASE = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
   const PLAY_BLOCKING_KINDS = new Set(['house', 'rock', 'fence']);
   const PLAY_PLAYER_ACTIONS = {
     move:  { label: 'Move',  range: 3, cost: 1 },
@@ -7878,6 +8049,11 @@
     enemyAP: PLAY_TACTICS_MAX_AP,
     selectedAction: 'move',
     enemyTurnTimer: 0,
+    pendingTurnEnd: false,
+    enemyPendingAttack: false,
+    enemyTurnDoneAfterMove: false,
+    activePath: null,
+    activePathAction: 'move',
     objective: 'defeat_villain',
     objectiveStatus: '',
     collectedRelic: false,
@@ -8029,11 +8205,23 @@
 
   function renderTacticsOverlay() {
     clearTacticsOverlay();
-    if (!playMode.active || playMode.ended || !playMode.player || playMode.turn !== 'player') {
+    if (!playMode.active || playMode.ended || !playMode.player) {
       playOverlayGroup.visible = false;
       return;
     }
     playOverlayGroup.visible = true;
+    if (playMode.activePath && playMode.activePath.length) {
+      playMode.activePath.forEach((cell, i) => {
+        if (i === 0) return;
+        const mesh = makeTacticsTileMesh(i === playMode.activePath.length - 1 ? M.playDestination : M.playPathTile);
+        const p = tilePos(cell.x, cell.z);
+        mesh.position.set(p.x, TOP_H + terrainRiseAt(cell.x, cell.z) + 0.075, p.z);
+        playOverlayGroup.add(mesh);
+      });
+    }
+    if (playMode.turn !== 'player' || playHasActiveMovement()) {
+      return;
+    }
     const action = playMode.selectedAction || 'move';
     let cells = [];
     let mat = M.playReachable;
@@ -8276,9 +8464,11 @@
   }
 
   function playWorldPosition(entity) {
-    const pos = tilePos(entity.x, entity.z);
-    const gx = playGridIndex(entity.x);
-    const gz = playGridIndex(entity.z);
+    const vx = entity.renderX ?? entity.x;
+    const vz = entity.renderZ ?? entity.z;
+    const pos = tilePos(vx, vz);
+    const gx = playGridIndex(vx);
+    const gz = playGridIndex(vz);
     pos.y = TOP_H + terrainRiseAt(gx, gz) + 0.04;
     return pos;
   }
@@ -8358,8 +8548,94 @@
     playMoveEntity(entity, dx * speed * dt, dz * speed * dt);
   }
 
+  function playEntityIsMoving(entity) {
+    return !!(entity && entity.movePath && entity.movePathIndex < entity.movePath.length);
+  }
+
+  function playHasActiveMovement() {
+    return playEntityIsMoving(playMode.player) || playEntityIsMoving(playMode.villain);
+  }
+
+  function playMovementSpeed(entity) {
+    if (!entity) return PLAY_TILE_MOVE_SPEED;
+    return entity.action === 'dash' ? PLAY_TILE_DASH_SPEED : PLAY_TILE_MOVE_SPEED;
+  }
+
+  function playStartEntityPath(entity, path, action) {
+    if (!entity || !path || path.length < 2) return false;
+    const cleanPath = path.map(p => ({ x: playGridIndex(p.x), z: playGridIndex(p.z) }));
+    const start = cleanPath[0];
+    const next = cleanPath[1];
+    const destination = cleanPath[cleanPath.length - 1];
+    entity.renderX = entity.renderX ?? entity.x;
+    entity.renderZ = entity.renderZ ?? entity.z;
+    entity.x = destination.x;
+    entity.z = destination.z;
+    entity.movePath = cleanPath;
+    entity.movePathIndex = 1;
+    entity.moveProgress = 0;
+    entity.moveFrom = { x: start.x, z: start.z };
+    entity.moveTo = { x: next.x, z: next.z };
+    entity.action = action || 'move';
+    entity.movePhase = (entity.movePhase || 0) + 0.5;
+    playFaceVisualToward(entity, next);
+    playMode.activePath = cleanPath;
+    playMode.activePathAction = action || 'move';
+    renderTacticsOverlay();
+    return true;
+  }
+
+  function playFinishEntityMovement(entity) {
+    if (!entity) return;
+    entity.renderX = entity.x;
+    entity.renderZ = entity.z;
+    entity.movePath = null;
+    entity.movePathIndex = 0;
+    entity.moveProgress = 0;
+    entity.moveFrom = null;
+    entity.moveTo = null;
+    if (entity.action === 'move' || entity.action === 'retreat') entity.action = 'idle';
+  }
+
+  function playAdvanceEntityMovement(entity, dt) {
+    if (!playEntityIsMoving(entity)) return false;
+    const speed = playMovementSpeed(entity);
+    entity.moveProgress += dt * speed;
+    entity.movePhase = (entity.movePhase || 0) + dt * speed * Math.PI;
+    while (entity.moveProgress >= 1 && playEntityIsMoving(entity)) {
+      entity.renderX = entity.moveTo.x;
+      entity.renderZ = entity.moveTo.z;
+      entity.moveProgress -= 1;
+      entity.movePathIndex += 1;
+      if (!playEntityIsMoving(entity)) {
+        playFinishEntityMovement(entity);
+        return true;
+      }
+      entity.moveFrom = { x: entity.renderX, z: entity.renderZ };
+      entity.moveTo = entity.movePath[entity.movePathIndex];
+      playFaceVisualToward(entity, entity.moveTo);
+    }
+    if (playEntityIsMoving(entity)) {
+      const t = PLAY_TILE_EASE(Math.max(0, Math.min(1, entity.moveProgress)));
+      entity.renderX = entity.moveFrom.x + (entity.moveTo.x - entity.moveFrom.x) * t;
+      entity.renderZ = entity.moveFrom.z + (entity.moveTo.z - entity.moveFrom.z) * t;
+      playFaceVisualToward(entity, entity.moveTo);
+    }
+    return false;
+  }
+
+  function playAdvanceMovements(dt) {
+    const playerFinished = playAdvanceEntityMovement(playMode.player, dt);
+    const villainFinished = playAdvanceEntityMovement(playMode.villain, dt);
+    if ((playerFinished || villainFinished) && !playHasActiveMovement()) {
+      playMode.activePath = null;
+      renderTacticsOverlay();
+    }
+    return playerFinished || villainFinished;
+  }
+
   function playIsPlayerTurn() {
-    return playMode.active && !playMode.ended && playMode.turn === 'player';
+    return playMode.active && !playMode.ended && playMode.turn === 'player' && !playHasActiveMovement();
   }
 
   function playCanSpendAP(cost) {
@@ -8376,7 +8652,10 @@
 
   function playSpendAP(cost) {
     playMode.playerAP = Math.max(0, playMode.playerAP - cost);
-    if (playMode.playerAP <= 0 && !playMode.ended) playEndPlayerTurn();
+    if (playMode.playerAP <= 0 && !playMode.ended) {
+      if (playHasActiveMovement()) playMode.pendingTurnEnd = true;
+      else playEndPlayerTurn();
+    }
     else {
       renderTacticsOverlay();
       updatePlayHud();
@@ -8390,6 +8669,9 @@
     playMode.playerAP = PLAY_TACTICS_MAX_AP;
     playMode.enemyAP = PLAY_TACTICS_MAX_AP;
     playMode.enemyTurnTimer = 0;
+    playMode.pendingTurnEnd = false;
+    playMode.enemyPendingAttack = false;
+    playMode.enemyTurnDoneAfterMove = false;
     playMode.selectedAction = 'move';
     if (playMode.player) {
       playMode.player.guarding = false;
@@ -8404,6 +8686,7 @@
     if (!playMode.active || playMode.ended || playMode.turn === 'enemy') return false;
     playMode.turn = 'enemy';
     playMode.selectedAction = 'enemy';
+    playMode.pendingTurnEnd = false;
     playMode.enemyAP = PLAY_TACTICS_MAX_AP;
     playMode.enemyTurnTimer = PLAY_TACTICS_ENEMY_DELAY;
     clearTacticsOverlay();
@@ -8427,14 +8710,11 @@
   function playMoveEntityToTile(entity, tile, action) {
     if (!entity || !tile) return false;
     const path = playPathTo(entity, tile);
-    if (!path) return false;
-    const start = { x: entity.x, z: entity.z };
-    entity.x = tile.x;
-    entity.z = tile.z;
-    entity.action = action || 'move';
-    entity.movePhase = (entity.movePhase || 0) + path.length;
-    playFaceToward(entity, tile);
-    if (start.x !== entity.x || start.z !== entity.z) {
+    if (!path || path.length < 2) return false;
+    const start = playEntityTile(entity);
+    const moved = playStartEntityPath(entity, path, action === 'dash' ? 'dash' : (action || 'move'));
+    if (!moved) return false;
+    if (start.x !== tile.x || start.z !== tile.z) {
       if (typeof playSfx === 'function') playSfx(action === 'dash' ? 'whoosh' : 'rustle', action === 'dash' ? 0.42 : 0.25);
     }
     return true;
@@ -8469,13 +8749,14 @@
     const canSee = playHasLineOfSight(villain, player);
     if (villain.hp <= 1 && dist < 2.25) {
       const retreat = playBestReachableCell(villain, player, villain.moveTiles || 2, true);
-      playMoveEntityToTile(villain, retreat, 'retreat');
+      const moved = playMoveEntityToTile(villain, retreat, 'retreat');
       villain.state = 'retreat';
       ap -= PLAY_VILLAIN_ACTIONS.move.cost;
       if (ap > 0) {
         villain.guarding = true;
         villain.state = 'guard';
       }
+      playMode.enemyTurnDoneAfterMove = moved;
       return;
     }
     if (dist <= PLAY_VILLAIN_ATTACK_RANGE && canSee) {
@@ -8487,15 +8768,22 @@
       return;
     }
     const approach = playBestReachableCell(villain, player, villain.moveTiles || 2, false);
-    playMoveEntityToTile(villain, approach, 'move');
+    const moved = playMoveEntityToTile(villain, approach, 'move');
     villain.state = 'chase';
     ap -= PLAY_VILLAIN_ACTIONS.move.cost;
     if (ap > 0 && playDistance(villain, player) <= PLAY_VILLAIN_ATTACK_RANGE && playHasLineOfSight(villain, player)) {
-      villain.state = 'windup';
-      villain.windup = PLAY_VILLAIN_WINDUP;
-      playFaceToward(villain, player);
-      playDamagePlayer(PLAY_VILLAIN_ACTIONS.hexSlash.damage);
-      villain.cooldown = PLAY_VILLAIN_ACTIONS.hexSlash.cooldown;
+      if (moved) {
+        playMode.enemyPendingAttack = true;
+        playMode.enemyTurnDoneAfterMove = true;
+      } else {
+        villain.state = 'windup';
+        villain.windup = PLAY_VILLAIN_WINDUP;
+        playFaceToward(villain, player);
+        playDamagePlayer(PLAY_VILLAIN_ACTIONS.hexSlash.damage);
+        villain.cooldown = PLAY_VILLAIN_ACTIONS.hexSlash.cooldown;
+      }
+    } else if (moved) {
+      playMode.enemyTurnDoneAfterMove = true;
     }
   }
 
@@ -8539,11 +8827,65 @@
     if (d <= 0.001) return;
     entity.dirX = dx / d;
     entity.dirZ = dz / d;
+    if (Math.abs(entity.dirX) > 0.12) entity.facing = entity.dirX < 0 ? 'left' : 'right';
+  }
+
+  function playFaceVisualToward(entity, target) {
+    if (!entity || !target) return;
+    const ox = entity.renderX ?? entity.x;
+    const oz = entity.renderZ ?? entity.z;
+    const dx = target.x - ox;
+    const dz = target.z - oz;
+    const d = Math.hypot(dx, dz);
+    if (d <= 0.001) return;
+    entity.dirX = dx / d;
+    entity.dirZ = dz / d;
+    if (Math.abs(entity.dirX) > 0.12) entity.facing = entity.dirX < 0 ? 'left' : 'right';
   }
 
   function playEntityFacingAngle(entity, fallbackTarget) {
-    if (fallbackTarget) playFaceToward(entity, fallbackTarget);
+    if (playEntityIsMoving(entity) && entity.moveTo) playFaceVisualToward(entity, entity.moveTo);
+    else if (fallbackTarget) playFaceToward(entity, fallbackTarget);
     return Math.atan2(entity.dirX || 0, entity.dirZ || -1);
+  }
+
+  function playEntityDirection(entity, fallbackTarget) {
+    if (playEntityIsMoving(entity) && entity.moveTo) playFaceVisualToward(entity, entity.moveTo);
+    else if (fallbackTarget) playFaceToward(entity, fallbackTarget);
+    if (entity && entity.facing) return entity.facing;
+    const dx = entity ? (entity.dirX || 0) : 0;
+    return dx < -0.12 ? 'left' : 'right';
+  }
+
+  function playSpriteActionFor(role, entity) {
+    if (!entity) return 'idle';
+    if (entity.hitFlash > 0) return 'hit';
+    if (role === 'hero') {
+      if (entity.slashTimer > 0 || entity.action === 'slash') return 'slash';
+      if (entity.guardTimer > 0 || entity.guarding || entity.action === 'guard') return 'guard';
+      if (entity.action === 'dash') return 'dash';
+      if (playEntityIsMoving(entity) || entity.action === 'move') return 'move';
+      return 'idle';
+    }
+    if (role === 'villain') {
+      if (entity.state === 'windup' || entity.windup > 0) return 'attack';
+      if (entity.guarding || entity.state === 'guard') return 'guard';
+      if (playEntityIsMoving(entity) || entity.state === 'chase' || entity.state === 'retreat') return 'move';
+      return 'idle';
+    }
+    return 'idle';
+  }
+
+  function updateSpriteActorForPlay(mesh, role, entity, target) {
+    const actor = mesh && mesh.userData && mesh.userData.spriteActor;
+    if (!actor || !entity) return false;
+    const action = playSpriteActionFor(role, entity);
+    const direction = playEntityDirection(entity, target);
+    setSpriteActorFrame(mesh, action, direction);
+    actor.sprite.position.y = 0.015 + (playEntityIsMoving(entity) ? Math.sin((entity.movePhase || 0) * 2) * 0.025 : 0);
+    actor.material.opacity = entity.hp === 0 ? 0.55 : 1;
+    actor.material.color.setHex(entity.hitFlash > 0 ? 0xfff4dd : 0xffffff);
+    return true;
   }
 
   function resetCharacterParts(mesh) {
@@ -8702,16 +9044,22 @@
     const villainPos = playWorldPosition(playMode.villain);
     if (playMode.playerMesh) {
       playMode.playerMesh.position.copy(playerPos);
-      playMode.playerMesh.rotation.y = playEntityFacingAngle(playMode.player, playMode.player.slashTimer > 0 ? playMode.villain : null);
-      animateHeroMesh(playMode.playerMesh, playMode.player);
+      const spriteDriven = updateSpriteActorForPlay(playMode.playerMesh, 'hero', playMode.player, playMode.player.slashTimer > 0 ? playMode.villain : null);
+      if (!spriteDriven) {
+        playMode.playerMesh.rotation.y = playEntityFacingAngle(playMode.player, playMode.player.slashTimer > 0 ? playMode.villain : null);
+        animateHeroMesh(playMode.playerMesh, playMode.player);
+      }
       const flash = playMode.player.hitFlash > 0 ? 1.08 : 1;
       playMode.playerMesh.scale.setScalar(flash);
     }
     if (playMode.villainMesh) {
       playMode.villainMesh.position.copy(villainPos);
       playMode.villainMesh.visible = playMode.villain.hp > 0;
-      playMode.villainMesh.rotation.y = playEntityFacingAngle(playMode.villain, playMode.player);
-      animateVillainMesh(playMode.villainMesh, playMode.villain);
+      const spriteDriven = updateSpriteActorForPlay(playMode.villainMesh, 'villain', playMode.villain, playMode.player);
+      if (!spriteDriven) {
+        playMode.villainMesh.rotation.y = playEntityFacingAngle(playMode.villain, playMode.player);
+        animateVillainMesh(playMode.villainMesh, playMode.villain);
+      }
       const flash = playMode.villain.hitFlash > 0 ? 1.10 : 1;
       playMode.villainMesh.scale.setScalar(flash);
     }
@@ -8726,7 +9074,7 @@
     if (playMode.moveMesh) {
       playMode.moveMesh.position.copy(playerPos);
       playMode.moveMesh.position.y += 0.012;
-      playMode.moveMesh.visible = playMode.active && !playMode.ended && playMode.turn === 'player';
+      playMode.moveMesh.visible = false;
     }
   }
 
@@ -8749,7 +9097,8 @@
     if (playHud.style) {
       const style = playMode.player.fightingStyle || 'Vanguard';
       const speed = (playMode.player.moveSpeed || PLAY_PLAYER_SPEED).toFixed(2).replace(/\.00$/, '');
-      const actionLabel = playMode.selectedAction === 'slash' ? 'Choose target' :
+      const actionLabel = playHasActiveMovement() ? 'Moving through path' :
+        playMode.selectedAction === 'slash' ? 'Choose target' :
         playMode.selectedAction === 'dash' ? 'Choose dash tile' : 'Choose move tile';
       playHud.style.textContent = style + ' · Move ' + playMode.player.moveTiles + ' · Speed ' + speed + ' · ' + actionLabel;
     }
@@ -8760,19 +9109,19 @@
       playHud.turn.textContent = playMode.result ? '' : turnText;
     }
     if (playHud.attack) {
-      playHud.attack.disabled = playMode.ended || playMode.turn !== 'player' || playMode.playerAP < PLAY_PLAYER_ACTIONS.slash.cost || playMode.player.cooldown > 0;
+      playHud.attack.disabled = playMode.ended || playMode.turn !== 'player' || playHasActiveMovement() || playMode.playerAP < PLAY_PLAYER_ACTIONS.slash.cost || playMode.player.cooldown > 0;
       playHud.attack.classList.toggle('active', playMode.selectedAction === 'slash' || playMode.player.slashTimer > 0);
     }
     if (playHud.dash) {
-      playHud.dash.disabled = playMode.ended || playMode.turn !== 'player' || playMode.playerAP < PLAY_PLAYER_ACTIONS.dash.cost || playMode.player.dashCooldown > 0;
+      playHud.dash.disabled = playMode.ended || playMode.turn !== 'player' || playHasActiveMovement() || playMode.playerAP < PLAY_PLAYER_ACTIONS.dash.cost || playMode.player.dashCooldown > 0;
       playHud.dash.classList.toggle('active', playMode.selectedAction === 'dash' || playMode.player.dashTimer > 0);
     }
     if (playHud.guard) {
-      playHud.guard.disabled = playMode.ended || playMode.turn !== 'player' || playMode.playerAP < PLAY_PLAYER_ACTIONS.guard.cost || playMode.player.guardCooldown > 0;
+      playHud.guard.disabled = playMode.ended || playMode.turn !== 'player' || playHasActiveMovement() || playMode.playerAP < PLAY_PLAYER_ACTIONS.guard.cost || playMode.player.guardCooldown > 0;
       playHud.guard.classList.toggle('active', playMode.player.guardTimer > 0);
     }
     if (playHud.endTurn) {
-      playHud.endTurn.disabled = playMode.ended || playMode.turn !== 'player';
+      playHud.endTurn.disabled = playMode.ended || playMode.turn !== 'player' || playHasActiveMovement();
     }
   }
 
@@ -8872,19 +9221,39 @@
     playMode.player.hitFlash = Math.max(0, playMode.player.hitFlash - dt);
     playMode.villain.hitFlash = Math.max(0, playMode.villain.hitFlash - dt);
     playMode.attackPulse = Math.max(0, playMode.attackPulse - dt);
+    playAdvanceMovements(dt);
 
     if (!playMode.ended) {
-      if (playMode.turn === 'enemy') {
+      if (playMode.pendingTurnEnd && !playHasActiveMovement()) {
+        playEndPlayerTurn();
+      } else if (playMode.turn === 'enemy') {
         playMode.enemyTurnTimer = Math.max(0, playMode.enemyTurnTimer - dt);
-        if (playMode.enemyTurnTimer <= 0) {
-          playRunEnemyTurn();
+        if (playHasActiveMovement()) {
+          // Wait for the visible tile path to finish before the enemy acts again.
+        } else if (playMode.enemyTurnDoneAfterMove) {
+          playMode.enemyTurnDoneAfterMove = false;
+          if (playMode.enemyPendingAttack && !playMode.ended) {
+            playMode.enemyPendingAttack = false;
+            playMode.villain.state = 'windup';
+            playMode.villain.windup = PLAY_VILLAIN_WINDUP;
+            playFaceToward(playMode.villain, playMode.player);
+            playDamagePlayer(PLAY_VILLAIN_ACTIONS.hexSlash.damage);
+            playMode.villain.cooldown = PLAY_VILLAIN_ACTIONS.hexSlash.cooldown;
+          } else if (playMode.villain.state === 'chase' || playMode.villain.state === 'retreat') {
+            playMode.villain.state = playMode.villain.guarding ? 'guard' : 'patrol';
+          }
           if (!playMode.ended) playStartPlayerTurn();
+        } else if (playMode.enemyTurnTimer <= 0) {
+          playRunEnemyTurn();
+          if (!playMode.ended && !playHasActiveMovement() && !playMode.enemyTurnDoneAfterMove) playStartPlayerTurn();
         }
       } else {
         if (playMode.player.guardTimer > 0) {
           playMode.player.action = 'guard';
         } else if (playMode.player.slashTimer > 0) {
           playMode.player.action = 'slash';
+        } else if (playEntityIsMoving(playMode.player)) {
+          playMode.player.action = playMode.player.action === 'dash' ? 'dash' : 'move';
         } else if (playMode.player.dashTimer <= 0 && playMode.player.action === 'dash') {
           playMode.player.action = 'idle';
         } else if (playMode.player.action !== 'dash') {
@@ -8931,6 +9300,11 @@
     playMode.enemyAP = PLAY_TACTICS_MAX_AP;
     playMode.selectedAction = 'move';
     playMode.enemyTurnTimer = 0;
+    playMode.pendingTurnEnd = false;
+    playMode.enemyPendingAttack = false;
+    playMode.enemyTurnDoneAfterMove = false;
+    playMode.activePath = null;
+    playMode.activePathAction = 'move';
     playMode.objective = setup.objective;
     playMode.objectiveStatus = GAME_OBJECTIVE_LABELS[setup.objective] || 'Defeat the villain';
     playMode.collectedRelic = false;
@@ -8940,6 +9314,8 @@
     playMode.player = {
       x: setup.player.x,
       z: setup.player.z,
+      renderX: setup.player.x,
+      renderZ: setup.player.z,
       authoredX: setup.authoredPlayer.x,
       authoredZ: setup.authoredPlayer.z,
       hp: PLAY_PLAYER_MAX_HP,
@@ -8959,10 +9335,13 @@
       hitFlash: 0,
       dirX: 0,
       dirZ: -1,
+      facing: 'right',
     };
     playMode.villain = {
       x: setup.villain.x,
       z: setup.villain.z,
+      renderX: setup.villain.x,
+      renderZ: setup.villain.z,
       authoredX: setup.authoredVillain.x,
       authoredZ: setup.authoredVillain.z,
       spawnX: setup.villain.x,
@@ -8980,6 +9359,9 @@
       guarding: false,
       patrolIndex: 0,
       patrolPoints: setup.patrolPoints,
+      dirX: -1,
+      dirZ: 0,
+      facing: 'left',
     };
     playMode.playerMesh = makePlayerPawn();
     playMode.villainMesh = makeVillainPawn();
@@ -9026,6 +9408,11 @@
     playMode.playerAP = PLAY_TACTICS_MAX_AP;
     playMode.enemyAP = PLAY_TACTICS_MAX_AP;
     playMode.enemyTurnTimer = 0;
+    playMode.pendingTurnEnd = false;
+    playMode.enemyPendingAttack = false;
+    playMode.enemyTurnDoneAfterMove = false;
+    playMode.activePath = null;
+    playMode.activePathAction = 'move';
     playKeys.clear();
     playGroup.visible = false;
     playOverlayGroup.visible = false;
@@ -9139,6 +9526,8 @@
     const player = playMode.player ? {
       x: Number(playMode.player.x.toFixed(2)),
       z: Number(playMode.player.z.toFixed(2)),
+      renderX: Number((playMode.player.renderX ?? playMode.player.x).toFixed(2)),
+      renderZ: Number((playMode.player.renderZ ?? playMode.player.z).toFixed(2)),
       hp: playMode.player.hp,
       authoredX: playMode.player.authoredX,
       authoredZ: playMode.player.authoredZ,
@@ -9146,7 +9535,9 @@
       moveTiles: playMode.player.moveTiles,
       fightingStyle: playMode.player.fightingStyle,
       action: playMode.player.action || 'idle',
-      facing: (playMode.player.dirX || 0) < -0.15 ? 'left' : ((playMode.player.dirX || 0) > 0.15 ? 'right' : 'forward'),
+      facing: playEntityDirection(playMode.player),
+      moving: playEntityIsMoving(playMode.player),
+      pathLength: playMode.player.movePath ? playMode.player.movePath.length : 0,
       cooldowns: {
         slash: Number((playMode.player.cooldown || 0).toFixed(2)),
         dash: Number((playMode.player.dashCooldown || 0).toFixed(2)),
@@ -9156,12 +9547,16 @@
     const villain = playMode.villain ? {
       x: Number(playMode.villain.x.toFixed(2)),
       z: Number(playMode.villain.z.toFixed(2)),
+      renderX: Number((playMode.villain.renderX ?? playMode.villain.x).toFixed(2)),
+      renderZ: Number((playMode.villain.renderZ ?? playMode.villain.z).toFixed(2)),
       authoredX: playMode.villain.authoredX,
       authoredZ: playMode.villain.authoredZ,
       hp: playMode.villain.hp,
       state: playMode.villain.state || 'idle',
       fightingStyle: playMode.villain.fightingStyle,
-      facing: (playMode.villain.dirX || 0) < -0.15 ? 'left' : ((playMode.villain.dirX || 0) > 0.15 ? 'right' : 'forward'),
+      facing: playEntityDirection(playMode.villain),
+      moving: playEntityIsMoving(playMode.villain),
+      pathLength: playMode.villain.movePath ? playMode.villain.movePath.length : 0,
       windup: Number((playMode.villain.windup || 0).toFixed(2)),
     } : null;
     const validation = validateGameLayerForPlay();
@@ -9182,6 +9577,7 @@
       },
       reachableTiles: playMode.active && playMode.player ? playReachableCells(playMode.player, PLAY_PLAYER_ACTIONS.move.range).length : 0,
       attackTiles: playMode.active && playMode.player ? playAttackCells(playMode.player, PLAY_PLAYER_ACTIONS.slash.range).length : 0,
+      activePath: playMode.activePath ? playMode.activePath.map(p => ({ x: p.x, z: p.z })) : [],
       player,
       villain,
       blockedCells: GRID * GRID - openCount,

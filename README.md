@@ -22,7 +22,7 @@ Terrain/object rules are normalized by the renderer: crops force dirt underneath
 
 Play Mode drops a character into the authored world. Movement respects blocked terrain and objects, the camera follows the player, and objectives can complete the board before returning to the editor.
 
-The current combat slice uses a tactics-style foundation: the hero has a `Vanguard` fighting style with Move 3, movement speed metadata, action points, Slash, Dash, and Guard actions. The villain uses a `Hexblade` style with deterministic local turn behavior. Player and villain meshes face left or right based on movement and opponent position.
+The current combat slice uses a tactics-style foundation: the hero has a `Vanguard` fighting style with Move 3, movement speed metadata, action points, Slash, Dash, and Guard actions. The villain uses a `Hexblade` style with deterministic local turn behavior. Characters move tile-to-tile through the computed path instead of jumping to the destination.
 
 ## Adventure Markers
 
@@ -49,7 +49,13 @@ Character concept sheets live in `assets/concepts/`:
 - `character-action-sheet.png`
 - `character-turnaround-sheet.png`
 
-The live game currently translates those references into procedural Three.js pieces rather than sprite sheets. This keeps the existing toy-diorama style, supports left/right facing through 3D rotation, and avoids adding a heavier asset pipeline before the tactics rules are stable.
+Playable sprite assets live in `assets/sprites/` and are generated from the concept sheets with:
+
+```bash
+npm run sprites:extract
+```
+
+The live game uses transparent Three.js sprites for the hero, villain, NPCs, and chest, with the older procedural pieces kept as runtime fallback while image textures load. Hero and villain frames switch by action and facing direction: idle, move, dash, slash, guard, hit, villain attack, and chest open/closed/relic states.
 
 ## Current Objectives
 
@@ -112,9 +118,9 @@ Deployment notes:
 | Reset to preset | `R` |
 | Clear to grass | `C` |
 | Enter Play Mode | Play button |
-| Move in Play Mode | Click a highlighted reachable tile |
+| Move in Play Mode | Click a highlighted reachable tile; the character follows the chosen square path |
 | Select Slash | `Space` or Slash button, then click the villain tile |
-| Select Dash | `Shift` or Dash button, then click a highlighted dash tile |
+| Select Dash | `Shift` or Dash button, then click a highlighted dash tile; dash still follows the square path |
 | Guard in Play Mode | `G` or Guard button |
 | End turn | `Enter` or End Turn button |
 | Exit Play Mode | `Esc` or Editor button |
@@ -141,7 +147,8 @@ Important runtime structures:
 - `cellMeshes['x,z']`: rendered Three.js groups for each tile.
 - `setCell(x, z, opts)`: main tile mutation entry point.
 - `gameLayer`: adventure data separate from tiles, including objective and markers.
-- `playMode`: runtime-only gameplay state for player, villain, health, combat, objective status, and camera follow.
+- `assets/sprites/manifest.json`: generated sprite index for hero, villain, NPC, and chest frames.
+- `playMode`: runtime-only gameplay state for player, villain, health, combat, objective status, camera follow, render positions, and active movement paths.
 - `window.render_game_to_text()`: deterministic text state for smoke tests and automation.
 - `window.advanceTime(ms)`: deterministic simulation stepping hook.
 
@@ -163,7 +170,7 @@ The smoke test starts a temporary static server and headless Chrome session, the
 - Play Mode starts from explicit markers
 - flexible spawn placement resolves blocked authored markers to valid standing tiles
 - tactics metadata includes fighting style, movement speed, turn state, action points, and Slash/Dash/Guard
-- click-to-move spends action points and updates reachable tile overlays
+- click-to-move spends action points, creates an active path, animates render coordinates along the square route, and updates reachable tile overlays
 - Slash preview exposes attack tiles, Dash requires a destination tile, Guard hands the turn to the enemy, and the villain resolves a deterministic turn
 - player facing switches left/right when attacking across the board
 - `defeat_villain`, `collect_relic`, `unlock_gate`, and `escape` objectives complete

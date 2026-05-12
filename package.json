@@ -6,6 +6,7 @@
   "scripts": {
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/migrate.mjs",
+    "sprites:extract": "node scripts/extract-sprite-assets.mjs",
     "smoke:play": "node scripts/smoke-play-mode.mjs",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -31,6 +32,7 @@
     "@types/node": "^25.6.2",
     "drizzle-kit": "^1.0.0-beta.22",
     "esbuild": "^0.28.0",
+    "pngjs": "^7.0.0",
     "typescript": "^6.0.3"
   }
 }

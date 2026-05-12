@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "frame": {
+    "width": 256,
+    "height": 256
+  },
+  "anchor": "bottom-center",
+  "sprites": {
+    "hero": {
+      "idle": {
+        "right": "hero/idle-right.png",
+        "left": "hero/idle-left.png"
+      },
+      "move": {
+        "right": "hero/move-right.png",
+        "left": "hero/move-left.png"
+      },
+      "dash": {
+        "right": "hero/dash-right.png",
+        "left": "hero/dash-left.png"
+      },
+      "guard": {
+        "right": "hero/guard-right.png",
+        "left": "hero/guard-left.png"
+      },
+      "slash": {
+        "right": "hero/slash-right.png",
+        "left": "hero/slash-left.png"
+      },
+      "hit": {
+        "right": "hero/hit-right.png",
+        "left": "hero/hit-left.png"
+      }
+    },
+    "villain": {
+      "idle": {
+        "right": "villain/idle-right.png",
+        "left": "villain/idle-left.png"
+      },
+      "move": {
+        "right": "villain/move-right.png",
+        "left": "villain/move-left.png"
+      },
+      "guard": {
+        "right": "villain/guard-right.png",
+        "left": "villain/guard-left.png"
+      },
+      "attack": {
+        "right": "villain/attack-right.png",
+        "left": "villain/attack-left.png"
+      },
+      "hit": {
+        "right": "villain/hit-right.png",
+        "left": "villain/hit-left.png"
+      }
+    },
+    "npc": {
+      "villager": {
+        "default": "npc/villager.png"
+      },
+      "farmer": {
+        "default": "npc/farmer.png"
+      },
+      "guard": {
+        "default": "npc/guard.png"
+      }
+    },
+    "chest": {
+      "closed": {
+        "default": "chest/closed.png"
+      },
+      "open": {
+        "default": "chest/open.png"
+      },
+      "relic": {
+        "default": "chest/relic.png"
+      }
+    }
+  }
+}
