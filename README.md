@@ -20,9 +20,9 @@ Terrain/object rules are normalized by the renderer: crops force dirt underneath
 
 ## Play Mode
 
-Play Mode drops a character into the authored world. Movement respects blocked terrain and objects, the camera follows the player, the villain patrols and chases locally, and objectives can complete the board before returning to the editor.
+Play Mode drops a character into the authored world. Movement respects blocked terrain and objects, the camera follows the player, and objectives can complete the board before returning to the editor.
 
-The current combat slice uses a tactics-style foundation: the hero has a `Vanguard` fighting style with Move 3, movement speed metadata, Slash, Dash, and Guard actions. The villain uses a `Hexblade` style with local windup/strike behavior. Player and villain meshes face left or right based on movement and opponent position.
+The current combat slice uses a tactics-style foundation: the hero has a `Vanguard` fighting style with Move 3, movement speed metadata, action points, Slash, Dash, and Guard actions. The villain uses a `Hexblade` style with deterministic local turn behavior. Player and villain meshes face left or right based on movement and opponent position.
 
 ## Adventure Markers
 
@@ -112,10 +112,11 @@ Deployment notes:
 | Reset to preset | `R` |
 | Clear to grass | `C` |
 | Enter Play Mode | Play button |
-| Move in Play Mode | WASD or arrow keys |
-| Slash in Play Mode | `Space` or Slash button |
-| Dash in Play Mode | `Shift` or Dash button |
+| Move in Play Mode | Click a highlighted reachable tile |
+| Select Slash | `Space` or Slash button, then click the villain tile |
+| Select Dash | `Shift` or Dash button, then click a highlighted dash tile |
 | Guard in Play Mode | `G` or Guard button |
+| End turn | `Enter` or End Turn button |
 | Exit Play Mode | `Esc` or Editor button |
 
 ## Editor Tools
@@ -161,7 +162,9 @@ The smoke test starts a temporary static server and headless Chrome session, the
 - `gameLayer` markers can be set
 - Play Mode starts from explicit markers
 - flexible spawn placement resolves blocked authored markers to valid standing tiles
-- tactics metadata includes fighting style, movement speed, and Slash/Dash/Guard
+- tactics metadata includes fighting style, movement speed, turn state, action points, and Slash/Dash/Guard
+- click-to-move spends action points and updates reachable tile overlays
+- Slash preview exposes attack tiles, Dash requires a destination tile, Guard hands the turn to the enemy, and the villain resolves a deterministic turn
 - player facing switches left/right when attacking across the board
 - `defeat_villain`, `collect_relic`, `unlock_gate`, and `escape` objectives complete
 - NPC markers can surface a short dialogue line
@@ -172,9 +175,9 @@ The smoke test starts a temporary static server and headless Chrome session, the
 
 Near-term:
 
-- Add a Vercel entrypoint or rewrite.
 - Add quest chains and multiple objectives.
 - Add richer NPC interactions.
+- Add party members and multiple enemies.
 
 Future:
 

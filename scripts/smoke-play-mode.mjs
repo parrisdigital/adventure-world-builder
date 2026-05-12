@@ -177,6 +177,7 @@ async function main() {
       const welcome = document.getElementById('welcome-modal');
       if (welcome) welcome.hidden = true;
       window.__tinyworldPlay.exit({ silent: true, restoreCamera: false });
+      window.applyState({ v: 5, gridSize: 8, cells: [], gameLayer: { objective: 'defeat_villain', markers: {} } });
       window.__tinyworldGameLayer.clear();
       window.__tinyworldGameLayer.setObjective(${JSON.stringify(objective)});
       const markers = ${JSON.stringify(markers)};
@@ -198,34 +199,69 @@ async function main() {
         defeatEntered.state.player.speed <= 0 ||
         !defeatEntered.state.tactics.playerActions.includes('dash') ||
         !defeatEntered.state.tactics.playerActions.includes('guard') ||
+        defeatEntered.state.turn !== 'player' ||
+        defeatEntered.state.actionPoints.player !== 2 ||
+        defeatEntered.state.reachableTiles <= 0 ||
         defeatEntered.state.villain.fightingStyle !== 'Hexblade') {
       throw new Error('Tactics metadata missing from play state: ' + JSON.stringify(defeatEntered.state));
     }
-    const facingAndActions = await evaluate(`(() => {
+    const tacticsActions = await evaluate(`(() => {
       const play = window.__tinyworldPlay.state();
-      play.player.x = 5;
-      play.player.z = 4;
-      play.villain.x = 3;
-      play.villain.z = 4;
+      const movedOk = window.__tinyworldPlay.moveTo(0, 6);
+      const moved = JSON.parse(window.render_game_to_text());
+      window.__tinyworldPlay.attack();
+      const preview = JSON.parse(window.render_game_to_text());
+      window.__tinyworldPlay.restart();
+      const duel = window.__tinyworldPlay.state();
+      duel.player.x = 5;
+      duel.player.z = 4;
+      duel.villain.x = 4;
+      duel.villain.z = 4;
       window.__tinyworldPlay.attack();
       const left = JSON.parse(window.render_game_to_text());
       window.advanceTime(500);
-      play.villain.x = 7;
-      play.villain.z = 4;
+      duel.villain.x = 6;
+      duel.villain.z = 4;
       window.__tinyworldPlay.attack();
       const right = JSON.parse(window.render_game_to_text());
+      window.__tinyworldPlay.restart();
       window.__tinyworldPlay.dash();
+      const dashSelected = JSON.parse(window.render_game_to_text());
+      const dashMovedOk = window.__tinyworldPlay.moveTo(3, 7);
       const dashed = JSON.parse(window.render_game_to_text());
-      window.advanceTime(400);
+      window.__tinyworldPlay.restart();
       window.__tinyworldPlay.guard();
       const guarded = JSON.parse(window.render_game_to_text());
-      return { left, right, dashed, guarded };
+      window.__tinyworldPlay.restart();
+      const enemy = window.__tinyworldPlay.state();
+      enemy.player.x = 3;
+      enemy.player.z = 4;
+      enemy.villain.x = 4;
+      enemy.villain.z = 4;
+      const hpBeforeEnemy = enemy.player.hp;
+      window.__tinyworldPlay.endTurn();
+      window.advanceTime(500);
+      const enemyResolved = JSON.parse(window.render_game_to_text());
+      return { movedOk, moved, preview, left, right, dashSelected, dashMovedOk, dashed, guarded, hpBeforeEnemy, enemyResolved };
     })()`);
-    if (facingAndActions.left.player.facing !== 'left' ||
-        facingAndActions.right.player.facing !== 'right' ||
-        facingAndActions.dashed.player.action !== 'dash' ||
-        facingAndActions.guarded.player.action !== 'guard') {
-      throw new Error('Directional facing or tactics actions failed: ' + JSON.stringify(facingAndActions));
+    if (!tacticsActions.movedOk ||
+        tacticsActions.moved.player.x !== 0 ||
+        tacticsActions.moved.player.z !== 6 ||
+        tacticsActions.moved.actionPoints.player !== 1 ||
+        tacticsActions.preview.selectedAction !== 'slash' ||
+        tacticsActions.preview.attackTiles <= 0 ||
+        tacticsActions.left.player.facing !== 'left' ||
+        tacticsActions.right.player.facing !== 'right' ||
+        tacticsActions.dashSelected.selectedAction !== 'dash' ||
+        !tacticsActions.dashMovedOk ||
+        tacticsActions.dashed.player.action !== 'dash' ||
+        tacticsActions.dashed.actionPoints.player !== 0 ||
+        tacticsActions.dashed.turn !== 'enemy' ||
+        tacticsActions.guarded.player.action !== 'guard' ||
+        tacticsActions.guarded.turn !== 'enemy' ||
+        tacticsActions.enemyResolved.turn !== 'player' ||
+        tacticsActions.enemyResolved.player.hp >= tacticsActions.hpBeforeEnemy) {
+      throw new Error('Tactical movement, facing, or actions failed: ' + JSON.stringify(tacticsActions));
     }
     await evaluate(`window.__tinyworldPlay.restart()`);
     const defeat = await evaluate(`(() => {

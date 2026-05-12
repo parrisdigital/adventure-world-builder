@@ -608,6 +608,12 @@
     font-size: 12px;
     line-height: 1.35;
   }
+  .play-turn {
+    margin-top: 6px;
+    color: #5f523e;
+    font-size: 12px;
+    font-weight: 750;
+  }
   .play-style {
     margin-top: 6px;
     color: #7b684f;
@@ -1711,6 +1717,7 @@
       <div>
         <div class="play-title" id="play-title">Play Mode</div>
         <div class="play-objective" id="play-objective">Defeat the villain.</div>
+        <div class="play-turn" id="play-turn">Player Turn · AP 2/2</div>
         <div class="play-style" id="play-style">Vanguard · Move 3 · Slash 1</div>
       </div>
     </div>
@@ -1728,6 +1735,7 @@
       <button class="btn" id="play-attack" type="button">Slash</button>
       <button class="btn" id="play-dash" type="button">Dash</button>
       <button class="btn" id="play-guard" type="button">Guard</button>
+      <button class="btn" id="play-end-turn" type="button">End Turn</button>
       <button class="btn" id="play-reset" type="button">Restart</button>
       <button class="btn" id="play-exit" type="button">Editor</button>
     </div>
@@ -2369,6 +2377,10 @@
     relicGlow:    new THREE.MeshBasicMaterial({ color: 0xf2f0a0, transparent: true, opacity: 0.78 }),
     playAttack:   new THREE.MeshBasicMaterial({ color: 0xf2c849, transparent: true, opacity: 0.52, depthWrite: false }),
     playMove:     new THREE.MeshBasicMaterial({ color: 0x3a72c8, transparent: true, opacity: 0.18, depthWrite: false }),
+    playReachable:new THREE.MeshBasicMaterial({ color: 0x3a72c8, transparent: true, opacity: 0.22, depthWrite: false }),
+    playDashTile: new THREE.MeshBasicMaterial({ color: 0x2c9a78, transparent: true, opacity: 0.24, depthWrite: false }),
+    playAttackTile:new THREE.MeshBasicMaterial({ color: 0xf2c849, transparent: true, opacity: 0.25, depthWrite: false }),
+    playTarget:   new THREE.MeshBasicMaterial({ color: 0xb84838, transparent: true, opacity: 0.32, depthWrite: false }),
     markerPlayer: new THREE.MeshLambertMaterial({ color: 0x3a72c8 }),
     markerVillain:new THREE.MeshLambertMaterial({ color: 0xb84838 }),
     markerChest:  new THREE.MeshLambertMaterial({ color: 0xd9a82b }),
@@ -7288,7 +7300,10 @@
 
   renderer.domElement.addEventListener('pointerdown', e => {
     if (playMode.active) {
-      if (e.button === 0) tryPlayerAttack();
+      if (e.button === 0) {
+        const cell = pickTile(e.clientX, e.clientY);
+        if (cell) playHandleBoardClick(cell);
+      }
       e.preventDefault();
       return;
     }
@@ -7825,21 +7840,30 @@
   const PLAY_VILLAIN_WINDUP = 0.32;
   const PLAY_INTERACT_RANGE = 0.62;
   const PLAY_ATTACK_RANGE = 1.08;
-  const PLAY_VILLAIN_ATTACK_RANGE = 0.72;
+  const PLAY_VILLAIN_ATTACK_RANGE = 1.08;
   const PLAY_PLAYER_RADIUS = 0.28;
+  const PLAY_TACTICS_MAX_AP = 2;
+  const PLAY_TACTICS_ENEMY_DELAY = 0.34;
   const PLAY_BLOCKING_KINDS = new Set(['house', 'rock', 'fence']);
   const PLAY_PLAYER_ACTIONS = {
-    slash: { label: 'Slash', range: 1.08, damage: 1, cooldown: 0.38, windup: 0.08, duration: 0.24 },
-    dash: { label: 'Dash', range: 2, cooldown: 1.20, duration: 0.34 },
-    guard: { label: 'Guard', range: 0, cooldown: 1.10, duration: 0.95 },
+    move:  { label: 'Move',  range: 3, cost: 1 },
+    slash: { label: 'Slash', range: 1.08, damage: 1, cost: 1, cooldown: 0.38, windup: 0.08, duration: 0.24 },
+    dash:  { label: 'Dash',  range: 5, cost: 2, cooldown: 1.20, duration: 0.34 },
+    guard: { label: 'Guard', range: 0, cost: 2, cooldown: 1.10, duration: 0.95 },
   };
   const PLAY_VILLAIN_ACTIONS = {
-    hexSlash: { label: 'Hex Slash', range: PLAY_VILLAIN_ATTACK_RANGE, damage: 1, windup: PLAY_VILLAIN_WINDUP, cooldown: 0.85 },
+    move: { label: 'Move', range: 2, cost: 1 },
+    hexSlash: { label: 'Hex Slash', range: PLAY_VILLAIN_ATTACK_RANGE, damage: 1, cost: 1, windup: PLAY_VILLAIN_WINDUP, cooldown: 0.85 },
+    guard: { label: 'Guard', cost: 2 },
   };
   const playGroup = new THREE.Group();
   playGroup.name = 'playMode';
   playGroup.visible = false;
   scene.add(playGroup);
+  const playOverlayGroup = new THREE.Group();
+  playOverlayGroup.name = 'playTacticsOverlay';
+  playOverlayGroup.visible = false;
+  scene.add(playOverlayGroup);
   const playKeys = new Set();
   const playMode = {
     active: false,
@@ -7847,6 +7871,13 @@
     result: null,
     time: 0,
     attackPulse: 0,
+    tactical: true,
+    turn: 'player',
+    turnCount: 1,
+    playerAP: PLAY_TACTICS_MAX_AP,
+    enemyAP: PLAY_TACTICS_MAX_AP,
+    selectedAction: 'move',
+    enemyTurnTimer: 0,
     objective: 'defeat_villain',
     objectiveStatus: '',
     collectedRelic: false,
@@ -7870,11 +7901,13 @@
     hpBar: document.getElementById('play-health-bar'),
     villainHp: document.getElementById('play-villain-health'),
     villainBar: document.getElementById('play-villain-bar'),
+    turn: document.getElementById('play-turn'),
     style: document.getElementById('play-style'),
     toggle: document.getElementById('play-toggle'),
     attack: document.getElementById('play-attack'),
     dash: document.getElementById('play-dash'),
     guard: document.getElementById('play-guard'),
+    endTurn: document.getElementById('play-end-turn'),
     reset: document.getElementById('play-reset'),
     exit: document.getElementById('play-exit'),
   };
@@ -7905,6 +7938,137 @@
     return ring;
   }
 
+  function clearTacticsOverlay() {
+    while (playOverlayGroup.children.length) {
+      const c = playOverlayGroup.children.pop();
+      playOverlayGroup.remove(c);
+      disposeGroup(c);
+    }
+  }
+
+  function makeTacticsTileMesh(mat) {
+    const tile = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.018, 0.86), mat);
+    tile.renderOrder = 5;
+    tile.userData.tacticsOverlay = true;
+    return tile;
+  }
+
+  function playTileKey(x, z) {
+    return x + ',' + z;
+  }
+
+  function playEntityTile(entity) {
+    return { x: playGridIndex(entity.x), z: playGridIndex(entity.z) };
+  }
+
+  function playReachableCells(origin, range, opts) {
+    opts = opts || {};
+    const start = playEntityTile(origin);
+    const queue = [{ x: start.x, z: start.z, d: 0 }];
+    const seen = new Map([[playTileKey(start.x, start.z), queue[0]]]);
+    const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    for (let qi = 0; qi < queue.length; qi++) {
+      const cur = queue[qi];
+      if (cur.d >= range) continue;
+      for (const [dx, dz] of dirs) {
+        const nx = cur.x + dx;
+        const nz = cur.z + dz;
+        const nk = playTileKey(nx, nz);
+        if (seen.has(nk) || !playInBounds(nx, nz) || !playCanStandAt(nx, nz)) continue;
+        const next = { x: nx, z: nz, d: cur.d + 1 };
+        seen.set(nk, next);
+        queue.push(next);
+      }
+    }
+    const cells = Array.from(seen.values());
+    return opts.includeOrigin ? cells : cells.filter(c => c.x !== start.x || c.z !== start.z);
+  }
+
+  function playPathTo(from, to) {
+    const start = playEntityTile(from);
+    const goal = { x: playGridIndex(to.x), z: playGridIndex(to.z) };
+    const key = playTileKey;
+    if (start.x === goal.x && start.z === goal.z) return [start];
+    const queue = [start];
+    const prev = new Map([[key(start.x, start.z), null]]);
+    const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    let found = null;
+    for (let qi = 0; qi < queue.length; qi++) {
+      const cur = queue[qi];
+      if (cur.x === goal.x && cur.z === goal.z) { found = cur; break; }
+      for (const [dx, dz] of dirs) {
+        const nx = cur.x + dx;
+        const nz = cur.z + dz;
+        const nk = key(nx, nz);
+        if (prev.has(nk) || !playInBounds(nx, nz) || !playCanStandAt(nx, nz)) continue;
+        prev.set(nk, cur);
+        queue.push({ x: nx, z: nz });
+      }
+    }
+    if (!found) return null;
+    const path = [];
+    let step = found;
+    while (step) {
+      path.unshift({ x: step.x, z: step.z });
+      step = prev.get(key(step.x, step.z));
+    }
+    return path;
+  }
+
+  function playAttackCells(origin, range) {
+    const start = playEntityTile(origin);
+    const cells = [];
+    for (let x = 0; x < GRID; x++) {
+      for (let z = 0; z < GRID; z++) {
+        if (x === start.x && z === start.z) continue;
+        if (Math.hypot(x - start.x, z - start.z) <= range + 0.001) cells.push({ x, z });
+      }
+    }
+    return cells;
+  }
+
+  function renderTacticsOverlay() {
+    clearTacticsOverlay();
+    if (!playMode.active || playMode.ended || !playMode.player || playMode.turn !== 'player') {
+      playOverlayGroup.visible = false;
+      return;
+    }
+    playOverlayGroup.visible = true;
+    const action = playMode.selectedAction || 'move';
+    let cells = [];
+    let mat = M.playReachable;
+    if (action === 'slash') {
+      cells = playAttackCells(playMode.player, PLAY_PLAYER_ACTIONS.slash.range);
+      mat = M.playAttackTile;
+    } else if (action === 'dash') {
+      cells = playReachableCells(playMode.player, PLAY_PLAYER_ACTIONS.dash.range);
+      mat = M.playDashTile;
+    } else {
+      cells = playReachableCells(playMode.player, PLAY_PLAYER_ACTIONS.move.range);
+      mat = M.playReachable;
+    }
+    if (action !== 'slash' && playMode.villain) {
+      const v = playEntityTile(playMode.villain);
+      cells = cells.filter(c => c.x !== v.x || c.z !== v.z);
+    }
+    for (const cell of cells) {
+      const mesh = makeTacticsTileMesh(mat);
+      const p = tilePos(cell.x, cell.z);
+      mesh.position.set(p.x, TOP_H + terrainRiseAt(cell.x, cell.z) + 0.04, p.z);
+      playOverlayGroup.add(mesh);
+    }
+    if (action === 'slash' && playMode.villain && playMode.villain.hp > 0) {
+      const v = playEntityTile(playMode.villain);
+      const inRange = playDistance(playMode.player, playMode.villain) <= PLAY_PLAYER_ACTIONS.slash.range + 0.001;
+      if (inRange) {
+        const targetMesh = makeTacticsTileMesh(M.playTarget);
+        const p = tilePos(v.x, v.z);
+        targetMesh.position.set(p.x, TOP_H + terrainRiseAt(v.x, v.z) + 0.055, p.z);
+        playOverlayGroup.add(targetMesh);
+      }
+    }
+  }
+
   function clearPlayPieces() {
     while (playGroup.children.length) {
       const c = playGroup.children.pop();
@@ -7915,6 +8079,7 @@
     playMode.villainMesh = null;
     playMode.attackMesh = null;
     playMode.moveMesh = null;
+    clearTacticsOverlay();
   }
 
   function playInBounds(x, z) {
@@ -8193,10 +8358,152 @@
     playMoveEntity(entity, dx * speed * dt, dz * speed * dt);
   }
 
+  function playIsPlayerTurn() {
+    return playMode.active && !playMode.ended && playMode.turn === 'player';
+  }
+
+  function playCanSpendAP(cost) {
+    return playIsPlayerTurn() && playMode.playerAP >= cost;
+  }
+
+  function playSelectAction(action) {
+    if (!playIsPlayerTurn()) return false;
+    playMode.selectedAction = action || 'move';
+    renderTacticsOverlay();
+    updatePlayHud();
+    return true;
+  }
+
+  function playSpendAP(cost) {
+    playMode.playerAP = Math.max(0, playMode.playerAP - cost);
+    if (playMode.playerAP <= 0 && !playMode.ended) playEndPlayerTurn();
+    else {
+      renderTacticsOverlay();
+      updatePlayHud();
+    }
+  }
+
+  function playStartPlayerTurn() {
+    if (playMode.ended) return;
+    playMode.turn = 'player';
+    playMode.turnCount += 1;
+    playMode.playerAP = PLAY_TACTICS_MAX_AP;
+    playMode.enemyAP = PLAY_TACTICS_MAX_AP;
+    playMode.enemyTurnTimer = 0;
+    playMode.selectedAction = 'move';
+    if (playMode.player) {
+      playMode.player.guarding = false;
+      playMode.player.guardTimer = 0;
+      if (!playMode.player.action || playMode.player.action === 'guard') playMode.player.action = 'idle';
+    }
+    renderTacticsOverlay();
+    updatePlayHud();
+  }
+
+  function playEndPlayerTurn() {
+    if (!playMode.active || playMode.ended || playMode.turn === 'enemy') return false;
+    playMode.turn = 'enemy';
+    playMode.selectedAction = 'enemy';
+    playMode.enemyAP = PLAY_TACTICS_MAX_AP;
+    playMode.enemyTurnTimer = PLAY_TACTICS_ENEMY_DELAY;
+    clearTacticsOverlay();
+    updatePlayHud();
+    return true;
+  }
+
+  function playBestReachableCell(entity, target, range, preferFarther) {
+    const targetTile = playEntityTile(target);
+    let cells = playReachableCells(entity, range, { includeOrigin: true })
+      .filter(c => c.x !== targetTile.x || c.z !== targetTile.z);
+    if (!cells.length) cells = playReachableCells(entity, range, { includeOrigin: true });
+    cells.sort((a, b) => {
+      const da = Math.hypot(a.x - target.x, a.z - target.z);
+      const db = Math.hypot(b.x - target.x, b.z - target.z);
+      return preferFarther ? db - da : da - db;
+    });
+    return cells[0] || playEntityTile(entity);
+  }
+
+  function playMoveEntityToTile(entity, tile, action) {
+    if (!entity || !tile) return false;
+    const path = playPathTo(entity, tile);
+    if (!path) return false;
+    const start = { x: entity.x, z: entity.z };
+    entity.x = tile.x;
+    entity.z = tile.z;
+    entity.action = action || 'move';
+    entity.movePhase = (entity.movePhase || 0) + path.length;
+    playFaceToward(entity, tile);
+    if (start.x !== entity.x || start.z !== entity.z) {
+      if (typeof playSfx === 'function') playSfx(action === 'dash' ? 'whoosh' : 'rustle', action === 'dash' ? 0.42 : 0.25);
+    }
+    return true;
+  }
+
+  function playDamageVillain(amount) {
+    if (playMode.ended || !playMode.villain || playMode.villain.hp <= 0) return;
+    const guarded = !!playMode.villain.guarding;
+    const damage = guarded ? Math.max(0, amount - 1) : amount;
+    playMode.villain.guarding = false;
+    if (damage <= 0) {
+      playMode.villain.hitFlash = 0.10;
+      return;
+    }
+    playMode.villain.hp -= damage;
+    playMode.villain.hitFlash = 0.18;
+    if (typeof playSfx === 'function') playSfx('knock', 0.55);
+    if (playMode.villain.hp <= 0) {
+      playMode.villain.hp = 0;
+      playMode.villain.state = 'defeated';
+      if (playMode.objective === 'defeat_villain') playComplete('won');
+    }
+  }
+
+  function playRunEnemyTurn() {
+    if (!playMode.active || playMode.ended || !playMode.villain || playMode.villain.hp <= 0) return;
+    const villain = playMode.villain;
+    const player = playMode.player;
+    villain.guarding = false;
+    let ap = PLAY_TACTICS_MAX_AP;
+    const dist = playDistance(villain, player);
+    const canSee = playHasLineOfSight(villain, player);
+    if (villain.hp <= 1 && dist < 2.25) {
+      const retreat = playBestReachableCell(villain, player, villain.moveTiles || 2, true);
+      playMoveEntityToTile(villain, retreat, 'retreat');
+      villain.state = 'retreat';
+      ap -= PLAY_VILLAIN_ACTIONS.move.cost;
+      if (ap > 0) {
+        villain.guarding = true;
+        villain.state = 'guard';
+      }
+      return;
+    }
+    if (dist <= PLAY_VILLAIN_ATTACK_RANGE && canSee) {
+      villain.state = 'windup';
+      villain.windup = PLAY_VILLAIN_WINDUP;
+      playFaceToward(villain, player);
+      playDamagePlayer(PLAY_VILLAIN_ACTIONS.hexSlash.damage);
+      villain.cooldown = PLAY_VILLAIN_ACTIONS.hexSlash.cooldown;
+      return;
+    }
+    const approach = playBestReachableCell(villain, player, villain.moveTiles || 2, false);
+    playMoveEntityToTile(villain, approach, 'move');
+    villain.state = 'chase';
+    ap -= PLAY_VILLAIN_ACTIONS.move.cost;
+    if (ap > 0 && playDistance(villain, player) <= PLAY_VILLAIN_ATTACK_RANGE && playHasLineOfSight(villain, player)) {
+      villain.state = 'windup';
+      villain.windup = PLAY_VILLAIN_WINDUP;
+      playFaceToward(villain, player);
+      playDamagePlayer(PLAY_VILLAIN_ACTIONS.hexSlash.damage);
+      villain.cooldown = PLAY_VILLAIN_ACTIONS.hexSlash.cooldown;
+    }
+  }
+
   function playComplete(result) {
     if (playMode.ended) return;
     playMode.ended = true;
     playMode.result = result || 'won';
+    clearTacticsOverlay();
     if (playMode.result === 'won' && typeof playSfx === 'function') playSfx('whoosh', 0.7);
   }
 
@@ -8419,7 +8726,7 @@
     if (playMode.moveMesh) {
       playMode.moveMesh.position.copy(playerPos);
       playMode.moveMesh.position.y += 0.012;
-      playMode.moveMesh.visible = playMode.active && !playMode.ended;
+      playMode.moveMesh.visible = playMode.active && !playMode.ended && playMode.turn === 'player';
     }
   }
 
@@ -8433,7 +8740,8 @@
     if (playHud.villainBar) playHud.villainBar.style.width = (villainHp / PLAY_VILLAIN_MAX_HP * 100).toFixed(0) + '%';
     if (playHud.title) {
       playHud.title.textContent = playMode.result === 'won' ? 'World Cleared' :
-        playMode.result === 'lost' ? 'Defeated' : 'Play Mode';
+        playMode.result === 'lost' ? 'Defeated' :
+        playMode.turn === 'enemy' ? 'Enemy Turn' : 'Player Turn';
     }
     if (playHud.objective) {
       playHud.objective.textContent = playObjectiveText();
@@ -8441,62 +8749,62 @@
     if (playHud.style) {
       const style = playMode.player.fightingStyle || 'Vanguard';
       const speed = (playMode.player.moveSpeed || PLAY_PLAYER_SPEED).toFixed(2).replace(/\.00$/, '');
-      playHud.style.textContent = style + ' · Move ' + playMode.player.moveTiles + ' · Speed ' + speed + ' · Slash range ' + PLAY_PLAYER_ACTIONS.slash.range;
+      const actionLabel = playMode.selectedAction === 'slash' ? 'Choose target' :
+        playMode.selectedAction === 'dash' ? 'Choose dash tile' : 'Choose move tile';
+      playHud.style.textContent = style + ' · Move ' + playMode.player.moveTiles + ' · Speed ' + speed + ' · ' + actionLabel;
+    }
+    if (playHud.turn) {
+      const turnText = playMode.turn === 'enemy'
+        ? 'Enemy Turn · thinking'
+        : 'Player Turn · AP ' + playMode.playerAP + '/' + PLAY_TACTICS_MAX_AP;
+      playHud.turn.textContent = playMode.result ? '' : turnText;
     }
     if (playHud.attack) {
-      playHud.attack.disabled = playMode.ended || playMode.player.cooldown > 0;
-      playHud.attack.classList.toggle('active', playMode.player.slashTimer > 0);
+      playHud.attack.disabled = playMode.ended || playMode.turn !== 'player' || playMode.playerAP < PLAY_PLAYER_ACTIONS.slash.cost || playMode.player.cooldown > 0;
+      playHud.attack.classList.toggle('active', playMode.selectedAction === 'slash' || playMode.player.slashTimer > 0);
     }
     if (playHud.dash) {
-      playHud.dash.disabled = playMode.ended || playMode.player.dashCooldown > 0;
-      playHud.dash.classList.toggle('active', playMode.player.dashTimer > 0);
+      playHud.dash.disabled = playMode.ended || playMode.turn !== 'player' || playMode.playerAP < PLAY_PLAYER_ACTIONS.dash.cost || playMode.player.dashCooldown > 0;
+      playHud.dash.classList.toggle('active', playMode.selectedAction === 'dash' || playMode.player.dashTimer > 0);
     }
     if (playHud.guard) {
-      playHud.guard.disabled = playMode.ended || playMode.player.guardCooldown > 0;
+      playHud.guard.disabled = playMode.ended || playMode.turn !== 'player' || playMode.playerAP < PLAY_PLAYER_ACTIONS.guard.cost || playMode.player.guardCooldown > 0;
       playHud.guard.classList.toggle('active', playMode.player.guardTimer > 0);
+    }
+    if (playHud.endTurn) {
+      playHud.endTurn.disabled = playMode.ended || playMode.turn !== 'player';
     }
   }
 
   function tryPlayerAttack() {
     if (!playMode.active || playMode.ended || !playMode.player || !playMode.villain) return false;
-    if (playMode.player.cooldown > 0) return true;
     const spec = playMode.player.actions.slash;
+    if (!playCanSpendAP(spec.cost)) return playSelectAction('slash');
+    if (playDistance(playMode.player, playMode.villain) > spec.range || !playHasLineOfSight(playMode.player, playMode.villain)) {
+      return playSelectAction('slash');
+    }
+    if (playMode.player.cooldown > 0) return true;
     playMode.player.cooldown = spec.cooldown;
     playMode.player.slashTimer = spec.duration;
     playMode.player.action = 'slash';
     playMode.attackPulse = spec.duration;
     playFaceToward(playMode.player, playMode.villain);
-    const hit = playDistance(playMode.player, playMode.villain) <= spec.range;
-    if (hit && playMode.villain.hp > 0) {
-      playMode.villain.hp -= spec.damage;
-      playMode.villain.hitFlash = 0.18;
-      if (typeof playSfx === 'function') playSfx('knock', 0.55);
-      if (playMode.villain.hp <= 0) {
-        playMode.villain.hp = 0;
-        playMode.villain.state = 'defeated';
-        if (playMode.objective === 'defeat_villain') playComplete('won');
-      }
-    } else if (typeof playSfx === 'function') {
-      playSfx('rustle', 0.38);
-    }
+    playDamageVillain(spec.damage);
     syncPlayMeshes();
     updatePlayHud();
+    if (!playMode.ended) playSpendAP(spec.cost);
     return true;
   }
 
   function tryPlayerDash() {
     if (!playMode.active || playMode.ended || !playMode.player) return false;
-    if (playMode.player.dashCooldown > 0) return true;
-    playMode.player.dashCooldown = PLAY_PLAYER_ACTIONS.dash.cooldown;
-    playMode.player.dashTimer = PLAY_PLAYER_ACTIONS.dash.duration;
-    playMode.player.action = 'dash';
-    if (typeof playSfx === 'function') playSfx('whoosh', 0.42);
-    updatePlayHud();
-    return true;
+    if (!playCanSpendAP(PLAY_PLAYER_ACTIONS.dash.cost)) return false;
+    return playSelectAction('dash');
   }
 
   function tryPlayerGuard() {
     if (!playMode.active || playMode.ended || !playMode.player) return false;
+    if (!playCanSpendAP(PLAY_PLAYER_ACTIONS.guard.cost)) return false;
     if (playMode.player.guardCooldown > 0) return true;
     playMode.player.guardCooldown = PLAY_PLAYER_ACTIONS.guard.cooldown;
     playMode.player.guardTimer = PLAY_PLAYER_ACTIONS.guard.duration;
@@ -8504,6 +8812,48 @@
     playMode.player.action = 'guard';
     if (typeof playSfx === 'function') playSfx('knock', 0.26);
     updatePlayHud();
+    playMode.playerAP = 0;
+    playEndPlayerTurn();
+    return true;
+  }
+
+  function tryPlayerEndTurn() {
+    return playEndPlayerTurn();
+  }
+
+  function playCellInList(cell, cells) {
+    return cells.some(c => c.x === cell.x && c.z === cell.z);
+  }
+
+  function playHandleBoardClick(cell) {
+    if (!playIsPlayerTurn() || !cell) return false;
+    const targetCell = { x: cell.x, z: cell.z };
+    const action = playMode.selectedAction || 'move';
+    if (action === 'slash') {
+      const villainTile = playEntityTile(playMode.villain);
+      if (targetCell.x === villainTile.x && targetCell.z === villainTile.z) {
+        return tryPlayerAttack();
+      }
+      return playSelectAction('move');
+    }
+    const spec = action === 'dash' ? PLAY_PLAYER_ACTIONS.dash : PLAY_PLAYER_ACTIONS.move;
+    const cells = playReachableCells(playMode.player, spec.range);
+    const villainTile = playEntityTile(playMode.villain);
+    if (targetCell.x === villainTile.x && targetCell.z === villainTile.z) return false;
+    if (!playCellInList(targetCell, cells) || !playCanSpendAP(spec.cost)) {
+      return false;
+    }
+    const moved = playMoveEntityToTile(playMode.player, targetCell, action === 'dash' ? 'dash' : 'move');
+    if (!moved) return false;
+    if (action === 'dash') {
+      playMode.player.dashCooldown = PLAY_PLAYER_ACTIONS.dash.cooldown;
+      playMode.player.dashTimer = PLAY_PLAYER_ACTIONS.dash.duration;
+    }
+    playMode.selectedAction = 'move';
+    updatePlayObjective();
+    syncPlayMeshes();
+    updatePlayHud();
+    if (!playMode.ended) playSpendAP(spec.cost);
     return true;
   }
 
@@ -8518,36 +8868,29 @@
     playMode.player.slashTimer = Math.max(0, playMode.player.slashTimer - dt);
     playMode.player.guarding = playMode.player.guardTimer > 0;
     playMode.villain.cooldown = Math.max(0, playMode.villain.cooldown - dt);
+    playMode.villain.windup = Math.max(0, playMode.villain.windup - dt);
     playMode.player.hitFlash = Math.max(0, playMode.player.hitFlash - dt);
     playMode.villain.hitFlash = Math.max(0, playMode.villain.hitFlash - dt);
     playMode.attackPulse = Math.max(0, playMode.attackPulse - dt);
 
     if (!playMode.ended) {
-      let vx = 0;
-      let vz = 0;
-      if (playKeys.has('a') || playKeys.has('arrowleft')) vx -= 1;
-      if (playKeys.has('d') || playKeys.has('arrowright')) vx += 1;
-      if (playKeys.has('w') || playKeys.has('arrowup')) vz -= 1;
-      if (playKeys.has('s') || playKeys.has('arrowdown')) vz += 1;
-      const len = Math.hypot(vx, vz);
-      if (len > 0) {
-        vx /= len;
-        vz /= len;
-        playMode.player.dirX = vx;
-        playMode.player.dirZ = vz;
-        playMode.player.action = playMode.player.dashTimer > 0 ? 'dash' : 'move';
-        playMode.player.movePhase += dt * (playMode.player.dashTimer > 0 ? 16 : 9);
-        const speed = playMode.player.dashTimer > 0 ? PLAY_PLAYER_DASH_SPEED : playMode.player.moveSpeed;
-        playMoveEntity(playMode.player, vx * speed * dt, vz * speed * dt);
-      } else if (playMode.player.guardTimer > 0) {
-        playMode.player.action = 'guard';
-      } else if (playMode.player.slashTimer > 0) {
-        playMode.player.action = 'slash';
+      if (playMode.turn === 'enemy') {
+        playMode.enemyTurnTimer = Math.max(0, playMode.enemyTurnTimer - dt);
+        if (playMode.enemyTurnTimer <= 0) {
+          playRunEnemyTurn();
+          if (!playMode.ended) playStartPlayerTurn();
+        }
       } else {
-        playMode.player.action = 'idle';
+        if (playMode.player.guardTimer > 0) {
+          playMode.player.action = 'guard';
+        } else if (playMode.player.slashTimer > 0) {
+          playMode.player.action = 'slash';
+        } else if (playMode.player.dashTimer <= 0 && playMode.player.action === 'dash') {
+          playMode.player.action = 'idle';
+        } else if (playMode.player.action !== 'dash') {
+          playMode.player.action = 'idle';
+        }
       }
-
-      updateVillain(dt);
       updatePlayObjective();
     }
 
@@ -8582,6 +8925,12 @@
     playMode.result = null;
     playMode.time = 0;
     playMode.attackPulse = 0;
+    playMode.turn = 'player';
+    playMode.turnCount = 1;
+    playMode.playerAP = PLAY_TACTICS_MAX_AP;
+    playMode.enemyAP = PLAY_TACTICS_MAX_AP;
+    playMode.selectedAction = 'move';
+    playMode.enemyTurnTimer = 0;
     playMode.objective = setup.objective;
     playMode.objectiveStatus = GAME_OBJECTIVE_LABELS[setup.objective] || 'Defeat the villain';
     playMode.collectedRelic = false;
@@ -8628,6 +8977,7 @@
       state: 'patrol',
       windup: 0,
       pendingStrike: false,
+      guarding: false,
       patrolIndex: 0,
       patrolPoints: setup.patrolPoints,
     };
@@ -8637,6 +8987,7 @@
     playMode.moveMesh = makeMoveRangeMesh();
     playGroup.add(playMode.playerMesh, playMode.villainMesh, playMode.attackMesh, playMode.moveMesh);
     playGroup.visible = true;
+    playOverlayGroup.visible = true;
     playKeys.clear();
     homeTween = null;
     viewSize = Math.max(4.6, Math.min(7.2, GRID * 0.45));
@@ -8655,6 +9006,7 @@
       playHud.toggle.setAttribute('aria-label', 'Return to editor');
     }
     renderGameLayer();
+    renderTacticsOverlay();
     updateAdventurePanel();
     syncPlayMeshes();
     updatePlayHud();
@@ -8669,8 +9021,15 @@
     playMode.active = false;
     playMode.ended = false;
     playMode.result = null;
+    playMode.turn = 'player';
+    playMode.selectedAction = 'move';
+    playMode.playerAP = PLAY_TACTICS_MAX_AP;
+    playMode.enemyAP = PLAY_TACTICS_MAX_AP;
+    playMode.enemyTurnTimer = 0;
     playKeys.clear();
     playGroup.visible = false;
+    playOverlayGroup.visible = false;
+    clearTacticsOverlay();
     clearPlayPieces();
     playMode.player = null;
     playMode.villain = null;
@@ -8728,6 +9087,11 @@
       e.preventDefault();
       return true;
     }
+    if (k === 'enter') {
+      tryPlayerEndTurn();
+      e.preventDefault();
+      return true;
+    }
     if (k === 'escape') {
       exitPlayMode();
       e.preventDefault();
@@ -8755,9 +9119,13 @@
     if (playMode.active) exitPlayMode();
     else enterPlayMode();
   });
-  if (playHud.attack) playHud.attack.addEventListener('click', tryPlayerAttack);
+  if (playHud.attack) playHud.attack.addEventListener('click', () => {
+    if (playMode.selectedAction === 'slash') tryPlayerAttack();
+    else playSelectAction('slash');
+  });
   if (playHud.dash) playHud.dash.addEventListener('click', tryPlayerDash);
   if (playHud.guard) playHud.guard.addEventListener('click', tryPlayerGuard);
+  if (playHud.endTurn) playHud.endTurn.addEventListener('click', tryPlayerEndTurn);
   if (playHud.reset) playHud.reset.addEventListener('click', restartPlayMode);
   if (playHud.exit) playHud.exit.addEventListener('click', () => exitPlayMode());
   if (adventurePanel.objective) adventurePanel.objective.addEventListener('change', () => {
@@ -8804,6 +9172,16 @@
       coordinateSystem: 'grid coordinates, x right, z back, origin at front-left of current board',
       gameLayer: serializeGameLayer(),
       playValidation: validation.ok ? [] : validation.errors,
+      turn: playMode.turn,
+      turnCount: playMode.turnCount,
+      selectedAction: playMode.selectedAction,
+      actionPoints: {
+        player: playMode.playerAP,
+        enemy: playMode.enemyAP,
+        max: PLAY_TACTICS_MAX_AP,
+      },
+      reachableTiles: playMode.active && playMode.player ? playReachableCells(playMode.player, PLAY_PLAYER_ACTIONS.move.range).length : 0,
+      attackTiles: playMode.active && playMode.player ? playAttackCells(playMode.player, PLAY_PLAYER_ACTIONS.slash.range).length : 0,
       player,
       villain,
       blockedCells: GRID * GRID - openCount,
@@ -8839,6 +9217,10 @@
     attack: tryPlayerAttack,
     dash: tryPlayerDash,
     guard: tryPlayerGuard,
+    endTurn: tryPlayerEndTurn,
+    selectAction: playSelectAction,
+    clickCell: cell => playHandleBoardClick(cell),
+    moveTo: (x, z) => playHandleBoardClick({ x: playGridIndex(x), z: playGridIndex(z) }),
     state: () => playMode,
   };
 
