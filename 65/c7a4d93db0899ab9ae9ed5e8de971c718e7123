@@ -1,0 +1,43 @@
+NOTICE.md
+  s_61d189c31ea8c5::t_fb03390ddcbd0a 29,32,39
+README.md
+  s_61d189c31ea8c5::t_79145a387b505b 51,59,67,78
+tiny-world-builder.html
+  s_61d189c31ea8c5::t_5f5bcd253caa20 9122,9131,9140,9162
+  s_61d189c31ea8c5::t_ae7ec9cdaa9521 9382,9395,9404-9417
+  s_61d189c31ea8c5::t_4f1b0c4f7463fb 9421,9428
+  s_61d189c31ea8c5::t_1183fd811de227 5072,5078,5085
+  s_61d189c31ea8c5::t_f830ddbe4bf157 5033,5052
+  s_61d189c31ea8c5::t_614745c95354d1 9121,9139,9161,9168
+scripts/extract-sprite-assets.mjs
+  s_61d189c31ea8c5::t_771fbccd433960 62-65
+  s_61d189c31ea8c5::t_53a25e2b0493c5 9,140-158,164-190,203-207,390-391,594-596
+  s_61d189c31ea8c5::t_f78e0574475c1e 72,76-129,131,133-137
+  s_61d189c31ea8c5::t_e001c9b119da32 545,555,565
+  s_61d189c31ea8c5::t_00bad18ef0cf50 268-316,320-322
+  s_61d189c31ea8c5::t_a64880d4ef2e20 197
+  s_61d189c31ea8c5::t_5e6007bd4ae347 317-319
+  s_61d189c31ea8c5::t_c027d9bcafe1f8 130,132
+  s_61d189c31ea8c5::t_bb47d01cd41dee 159-163,191-196,198-202,411,421,431,441,451,461,483,493,503,513,523,575
+  s_61d189c31ea8c5::t_dfd174613bb1ac 604
+scripts/smoke-play-mode.mjs
+  s_61d189c31ea8c5::t_fe2d254f2a0ca5 288,366,383
+  s_61d189c31ea8c5::t_21245b64d7a1e0 363,377
+  s_61d189c31ea8c5::t_a865be22f364c4 282-287,289-291,295,308,312,358,364-365,378,382
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "65c7a4d93db0899ab9ae9ed5e8de971c718e7123",
+  "prompts": {},
+  "sessions": {
+    "s_61d189c31ea8c5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e192d-da87-7a23-a27d-cf3ad066e4df",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Parris Digital <parrisdigital@gmail.com>"
+    }
+  }
+}
