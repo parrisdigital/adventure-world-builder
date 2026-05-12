@@ -1,0 +1,144 @@
+assets/themes/classic/sprites/.gitkeep
+  s_61d189c31ea8c5::t_98d854fbda9fb1 1
+package.json
+  s_61d189c31ea8c5::t_6db897363ca843 12
+  s_61d189c31ea8c5::t_31d35b15e0da1c 10
+assets/themes/city/presets/.gitkeep
+  s_61d189c31ea8c5::t_98d854fbda9fb1 1
+assets/themes/japan/sprites/.gitkeep
+  s_61d189c31ea8c5::t_98d854fbda9fb1 1
+assets/themes/city/theme.json
+  s_61d189c31ea8c5::t_98d854fbda9fb1 1-10
+assets/themes/china/presets/.gitkeep
+  s_61d189c31ea8c5::t_98d854fbda9fb1 1
+assets/themes/china/buildings/.gitkeep
+  s_61d189c31ea8c5::t_98d854fbda9fb1 1
+world.schema.json
+  s_61d189c31ea8c5::t_2a578e35dcec66 20-24,92,109
+tiny-world-builder.html
+  s_61d189c31ea8c5::t_f009477420d9f5 4642
+  s_61d189c31ea8c5::t_dad7ca12b0cbc6 10163,12374
+  s_61d189c31ea8c5::t_abd317f2922723 8760-8765,8793,8817,8826
+  s_61d189c31ea8c5::t_af7e424f87dc2f 7371,7438-7440
+  s_61d189c31ea8c5::t_852d9af0f312d9 11316,11375
+  s_61d189c31ea8c5::t_7f8bb831554a7d 4919,4922-4928,4931-4936,4939-4942,4953-4956,4962-4963,5045,5070,5076,5081,5083
+  s_61d189c31ea8c5::t_8f9e4756c0d913 5628-5629,5632-5633,5647-5649
+  s_61d189c31ea8c5::t_85c0fc7b489b25 573,1728
+  s_61d189c31ea8c5::t_fada54f8bed7b9 11032-11041,11163-11166,11200-11203
+  s_61d189c31ea8c5::t_32cd92db06a4e7 4616-4627,4640-4641,4643
+  s_61d189c31ea8c5::t_2ff7391c90a33d 2642-2789
+  s_61d189c31ea8c5::t_80b652dc7d900d 10101-10106,10112-10116
+  s_61d189c31ea8c5::t_2e547db892a36e 11369
+  s_61d189c31ea8c5::t_9418589b28325b 11401,11404-11405
+  s_61d189c31ea8c5::t_c35a61caa392b7 4628
+  s_61d189c31ea8c5::t_2a5a1b09502fd8 9913,9941-9942
+  s_61d189c31ea8c5::t_46bed6df515f76 9946-9948,9950
+  s_61d189c31ea8c5::t_c469f310eefdb0 11576
+  s_61d189c31ea8c5::t_d4d3e91dc67958 9373,9386-9392,9406-9407,9412
+  s_61d189c31ea8c5::t_ad693b6e83f997 8324-8326
+  s_61d189c31ea8c5::t_5a0b578c1f2eaf 10229-10236
+  s_61d189c31ea8c5::t_cfe2e5c635f357 11802
+  s_61d189c31ea8c5::t_b1617e6e9bd396 11770
+  s_61d189c31ea8c5::t_8761e0b06d9c0d 1729
+  s_61d189c31ea8c5::t_491e28639f0484 8851-8916
+  s_61d189c31ea8c5::t_82a3b48884533c 8375-8409,8411-8441
+  s_61d189c31ea8c5::t_35f527b35ff237 8690-8692,8728-8759,8766-8792,8794-8816,8818-8825,8827-8850,8917-8931
+  s_61d189c31ea8c5::t_a9937963e565a1 7193-7194,7197-7198,7214-7216,7230-7242,7373,7456-7458
+  s_61d189c31ea8c5::t_d54aa3b0942b07 9267,9272,9342-9345,9348
+  s_61d189c31ea8c5::t_b59bd6ebf403e0 2326-2333
+  s_61d189c31ea8c5::t_8be9591c8731f5 9608,9623-9646
+  s_61d189c31ea8c5::t_91d3d43250d9ba 10107-10111
+  s_61d189c31ea8c5::t_e77ca1b6056e14 6388-6389,6392-6393,6428-6433
+  s_61d189c31ea8c5::t_b22b0531c58f58 9798
+  s_61d189c31ea8c5::t_5f4a85d4a5c393 2410-2411
+  s_61d189c31ea8c5::t_4758b7df9c57fa 11257,11266
+  s_61d189c31ea8c5::t_62e1e3e663d168 571-572,574-579,1717-1727,1730
+  s_61d189c31ea8c5::t_24f3bf0d39c15c 8594-8596
+  s_61d189c31ea8c5::t_9b917152c72f8a 8410
+  s_61d189c31ea8c5::t_2c25c13427d874 7972
+  s_61d189c31ea8c5::t_7c15ec914063d9 7106-7108,7112-7113,7127-7128
+scripts/smoke-play-mode.mjs
+  s_61d189c31ea8c5::t_851df5b2bf8a84 290-297,345,350,360-361
+  s_61d189c31ea8c5::t_8902396b4c703c 164
+  s_61d189c31ea8c5::t_e4c25002bc703f 188-192,199-236
+  s_61d189c31ea8c5::t_8fc40f10b787ce 193-198
+  s_61d189c31ea8c5::t_ea4e7c77e17183 384,403-404
+  s_61d189c31ea8c5::t_9ea9e31cd36a13 386-389,400-401
+  s_61d189c31ea8c5::t_753d46b185e7a3 390
+  s_61d189c31ea8c5::t_ad8a7428e868f4 2,13,21-42
+  s_61d189c31ea8c5::t_5e43b44212c486 385,398-399,402,405-410
+  s_61d189c31ea8c5::t_bd84158aab4e8c 541,546,549,569-570
+  s_61d189c31ea8c5::t_1625a3f572733d 391-397
+assets/themes/japan/theme.json
+  s_61d189c31ea8c5::t_98d854fbda9fb1 1-10
+assets/themes/china/tiles/.gitkeep
+  s_61d189c31ea8c5::t_98d854fbda9fb1 1
+assets/themes/japan/tiles/.gitkeep
+  s_61d189c31ea8c5::t_98d854fbda9fb1 1
+assets/themes/city/buildings/.gitkeep
+  s_61d189c31ea8c5::t_98d854fbda9fb1 1
+assets/themes/classic/tiles/.gitkeep
+  s_61d189c31ea8c5::t_98d854fbda9fb1 1
+assets/themes/japan/presets/.gitkeep
+  s_61d189c31ea8c5::t_98d854fbda9fb1 1
+scripts/validate-sprite-assets.mjs
+  s_61d189c31ea8c5::t_77f751533dd31f 9-16,56-100,117-134
+  s_61d189c31ea8c5::t_bfaddea6ff7958 1-8,17-55,101-116,135-146
+assets/themes/classic/presets/.gitkeep
+  s_61d189c31ea8c5::t_98d854fbda9fb1 1
+NOTICE.md
+  s_61d189c31ea8c5::t_0bdfb53022912e 27,30-37
+scripts/extract-sprite-assets.mjs
+  s_61d189c31ea8c5::t_56577feeafefe0 379
+  s_61d189c31ea8c5::t_5b8a6b7a518c80 170,172
+  s_61d189c31ea8c5::t_013274fa02d830 8,190-206,208-210,212,216-220,222,226-230,232,236-240,242,246-250,252,256-260,262,266-267,279-282,284,288-292,294,298-302,304,308-312,314,318-322,335,339-344,346,350-354,356,360-364,366,370-374,376,380-382,395,397-398,400-401,403,406,408,412-413,418
+  s_61d189c31ea8c5::t_ba79601618ac79 128,131,171,177-183,404
+  s_61d189c31ea8c5::t_361b17a02a8d5e 108,129-130,132,134-169,173-174
+  s_61d189c31ea8c5::t_4df9c23b58127c 133
+  s_61d189c31ea8c5::t_3d3d89c046ec2e 187,211,213-215,221,223-225,231,234-235,241,243-245,251,255,261,263-265,268-278,283,285-287,293,295-297,303,305-307,313,317,323-334,336-338,345,347-349,355,357-359,365,367-369,375,377-378,383-385
+  s_61d189c31ea8c5::t_0ecd94f25ac523 233,253-254,315-316
+  s_61d189c31ea8c5::t_c39d07dfdca029 402
+assets/themes/city/sprites/.gitkeep
+  s_61d189c31ea8c5::t_98d854fbda9fb1 1
+assets/themes/china/objects/.gitkeep
+  s_61d189c31ea8c5::t_98d854fbda9fb1 1
+assets/themes/china/sprites/.gitkeep
+  s_61d189c31ea8c5::t_98d854fbda9fb1 1
+assets/themes/classic/objects/.gitkeep
+  s_61d189c31ea8c5::t_98d854fbda9fb1 1
+assets/themes/city/tiles/.gitkeep
+  s_61d189c31ea8c5::t_98d854fbda9fb1 1
+assets/themes/city/objects/.gitkeep
+  s_61d189c31ea8c5::t_98d854fbda9fb1 1
+README.md
+  s_61d189c31ea8c5::t_b15efbe0787a3a 25,58-77,151,170,189-191,198
+assets/themes/classic/theme.json
+  s_61d189c31ea8c5::t_98d854fbda9fb1 1-10
+assets/themes/japan/buildings/.gitkeep
+  s_61d189c31ea8c5::t_98d854fbda9fb1 1
+assets/sprites/manifest.json
+  s_61d189c31ea8c5::t_9f24effbe67f5a 12-14,18-20,24-26,30-32,36-38,42-44,56-58,62-64,68-70,74-76,80-82,93-102,105-108,111-114
+  s_61d189c31ea8c5::t_f4097dc97c8103 4-5,45-50,83-88
+assets/themes/china/theme.json
+  s_61d189c31ea8c5::t_98d854fbda9fb1 1-10
+assets/themes/classic/buildings/.gitkeep
+  s_61d189c31ea8c5::t_98d854fbda9fb1 1
+assets/themes/japan/objects/.gitkeep
+  s_61d189c31ea8c5::t_98d854fbda9fb1 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "a5315507f1729f2f61254db6b3299fa010c97ccc",
+  "prompts": {},
+  "sessions": {
+    "s_61d189c31ea8c5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e192d-da87-7a23-a27d-cf3ad066e4df",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Parris Digital <parrisdigital@gmail.com>"
+    }
+  }
+}
