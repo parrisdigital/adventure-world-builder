@@ -1,0 +1,10 @@
+{
+  "id": "japan",
+  "label": "Japan",
+  "description": "Japanese temple voxel pack with sakura, bamboo, lanterns, torii gates, pagodas, temple halls, and watchtowers.",
+  "terrain": ["grass", "path", "dirt", "water"],
+  "objects": ["sakura", "bamboo", "lantern", "torii", "bridge", "rock", "crop", "wheat", "tuft"],
+  "buildings": ["temple", "pagoda", "watchtower"],
+  "characters": ["hero", "villain", "villager", "guard", "merchant"],
+  "defaultPreset": "japan-temple"
+}

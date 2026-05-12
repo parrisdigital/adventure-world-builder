@@ -24,10 +24,17 @@ If package metadata in the upstream project differs from the root `LICENSE`, tre
 
 Because this project is based on an AGPL-licensed work, public hosted modified versions should make their corresponding source code available.
 
-## Project Concept Assets
+## Project Concept And Sprite Assets
 
 - Character/action and left/right turnaround concept sheets are stored in `assets/concepts/`.
-- These concept assets were generated for Adventure World Builder and are used as visual direction for the procedural in-app character models.
+- Playable transparent sprites are extracted into `assets/sprites/` and indexed by `assets/sprites/manifest.json`.
+- The sprite extraction/validation scripts are part of this fork and are used to keep runtime characters complete, padded, and free of cropped body or weapon fragments.
+- The older procedural character pieces remain only as runtime fallbacks while sprite textures load or if a sprite asset fails.
+
+## Theme Pack Assets
+
+- Theme pack contracts are stored in `assets/themes/`.
+- The initial supported theme ids are `classic`, `japan`, `china`, and `city`.
 
 ## Third-Party Runtime Assets
 

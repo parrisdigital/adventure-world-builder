@@ -22,7 +22,7 @@ Terrain/object rules are normalized by the renderer: crops force dirt underneath
 
 Play Mode drops a character into the authored world. Movement respects blocked terrain and objects, the camera follows the player, and objectives can complete the board before returning to the editor.
 
-The current combat slice uses a tactics-style foundation: the hero has a `Vanguard` fighting style with Move 3, movement speed metadata, action points, Slash, Dash, and Guard actions. The villain uses a `Hexblade` style with deterministic local turn behavior. Characters move tile-to-tile through the computed path instead of jumping to the destination.
+The current combat slice uses a tactics-style foundation: the hero has a `Vanguard` fighting style with Move 3, movement speed metadata, action points, Slash, Dash, and Guard actions. The villain uses a `Hexblade` style with deterministic local turn behavior. Characters move tile-to-tile through the computed path instead of jumping to the destination, face front/back/left/right based on movement or target position, and show hit, guard, slash, and defeated presentation states.
 
 ## Adventure Markers
 
@@ -55,7 +55,26 @@ Playable sprite assets live in `assets/sprites/` and are generated from the conc
 npm run sprites:extract
 ```
 
-The live game uses transparent Three.js sprites for the hero, villain, NPCs, and chest, with the older procedural pieces kept as runtime fallback while image textures load. Hero and villain frames switch by action and facing direction: idle, move, dash, slash, guard, hit, villain attack, and chest open/closed/relic states.
+The live game uses manifest-backed transparent Three.js sprites for the hero, villain, NPCs, and chest, with the older procedural pieces kept as runtime fallback while image textures load. Hero and villain frames switch by action and facing direction: idle, move, dash, slash, guard, hit, villain attack, defeated, and chest open/closed/relic states.
+
+Sprite quality is checked with:
+
+```bash
+npm run sprites:validate
+```
+
+That validation enforces transparent edge padding and catches large detached frame-edge fragments, so action sprites do not ship with cropped heads, swords, slash arcs, or partial bodies from the source sheets.
+
+## World Themes
+
+Saved worlds include a `worldTheme` field. The first supported themes are:
+
+- `classic`
+- `japan`
+- `china`
+- `city`
+
+The Adventure panel includes a world style selector. Applying a theme changes the active tool palette, converting a world maps compatible objects to theme-specific variants, and starting a new themed world loads a preset board. The Japanese pack is playable now with sakura, bamboo, stone lanterns, torii gates, pagodas, temple halls, and watchtowers. China and City are scaffolded as theme packs and support conversion/preset contracts for further asset expansion.
 
 ## Current Objectives
 
@@ -129,7 +148,7 @@ Deployment notes:
 
 Terrain and world tools:
 
-`Grass` · `Path` · `Dirt` · `Water` · `House` · `Tree` · `Fence` · `Rock` · `Bridge` · `Crop` · `Corn` · `Wheat` · `Pumpkin` · `Carrot` · `Sunflower` · `Tuft` · `Erase`
+`Grass` · `Path` · `Dirt` · `Water` · `House` · `Tree` · `Sakura` · `Bamboo` · `Fence` · `Rock` · `Bridge` · `Lantern` · `Torii` · `Crop` · `Corn` · `Wheat` · `Pumpkin` · `Carrot` · `Sunflower` · `Tuft` · `Erase`
 
 Adventure marker tools:
 
@@ -148,6 +167,7 @@ Important runtime structures:
 - `setCell(x, z, opts)`: main tile mutation entry point.
 - `gameLayer`: adventure data separate from tiles, including objective and markers.
 - `assets/sprites/manifest.json`: generated sprite index for hero, villain, NPC, and chest frames.
+- `assets/themes/*/theme.json`: theme pack contracts for available tools, buildings, props, characters, and default presets.
 - `playMode`: runtime-only gameplay state for player, villain, health, combat, objective status, camera follow, render positions, and active movement paths.
 - `window.render_game_to_text()`: deterministic text state for smoke tests and automation.
 - `window.advanceTime(ms)`: deterministic simulation stepping hook.
@@ -166,13 +186,16 @@ The smoke test starts a temporary static server and headless Chrome session, the
 
 - Play Mode hooks load
 - in-app credits/source attribution opens from the toolbar
+- the sprite manifest contains front/back/left/right frames for hero, villain, and NPC roles
+- runtime hero/villain textures load from `assets/sprites/`
+- theme labels, Japanese preset loading, and `worldTheme` export/import work
 - `gameLayer` markers can be set
 - Play Mode starts from explicit markers
 - flexible spawn placement resolves blocked authored markers to valid standing tiles
 - tactics metadata includes fighting style, movement speed, turn state, action points, and Slash/Dash/Guard
 - click-to-move spends action points, creates an active path, animates render coordinates along the square route, and updates reachable tile overlays
 - Slash preview exposes attack tiles, Dash requires a destination tile, Guard hands the turn to the enemy, and the villain resolves a deterministic turn
-- player facing switches left/right when attacking across the board
+- player facing switches front/back while moving vertically and left/right when attacking across the board
 - `defeat_villain`, `collect_relic`, `unlock_gate`, and `escape` objectives complete
 - NPC markers can surface a short dialogue line
 - objective validation catches missing required markers

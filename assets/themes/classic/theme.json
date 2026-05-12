@@ -1,0 +1,10 @@
+{
+  "id": "classic",
+  "label": "Classic",
+  "description": "Original Adventure World Builder palette with cottages, towers, farms, rivers, rocks, and trees.",
+  "terrain": ["grass", "path", "dirt", "water"],
+  "objects": ["house", "tree", "fence", "rock", "bridge", "crop", "corn", "wheat", "pumpkin", "carrot", "sunflower", "tuft"],
+  "buildings": ["cottage", "manor", "tower", "turret", "skyscraper"],
+  "characters": ["hero", "villain", "villager", "guard", "farmer", "merchant"],
+  "defaultPreset": "classic"
+}

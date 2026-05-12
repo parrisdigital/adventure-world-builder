@@ -1,0 +1,10 @@
+{
+  "id": "china",
+  "label": "China",
+  "description": "Chinese-inspired voxel pack using bamboo, lanterns, tiered towers, temple halls, bridges, farms, and fortified watchtowers.",
+  "terrain": ["grass", "path", "dirt", "water"],
+  "objects": ["bamboo", "lantern", "bridge", "rock", "crop", "wheat", "tuft"],
+  "buildings": ["temple", "pagoda", "watchtower"],
+  "characters": ["hero", "villain", "villager", "guard", "merchant"],
+  "defaultPreset": "china-courtyard"
+}

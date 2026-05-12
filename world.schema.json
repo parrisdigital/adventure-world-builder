@@ -17,6 +17,11 @@
       "enum": [8, 12, 16, 20],
       "description": "Optional editable board size. Defaults to 8 when omitted."
     },
+    "worldTheme": {
+      "type": "string",
+      "enum": ["classic", "japan", "china", "city"],
+      "description": "Theme pack controlling palette, available tools, props, and character styling. Defaults to classic."
+    },
     "cells": {
       "type": "array",
       "description": "Sparse list of non-default cells on the current grid. x/z must be inside the active grid size. Each (x,z) should appear at most once.",
@@ -84,7 +89,7 @@
         },
         "kind": {
           "type": ["string", "null"],
-          "enum": [null, "house", "tree", "fence", "rock", "bridge", "crop", "corn", "wheat", "pumpkin", "carrot", "sunflower", "tuft"],
+          "enum": [null, "house", "tree", "fence", "rock", "bridge", "sakura", "bamboo", "lantern", "torii", "crop", "corn", "wheat", "pumpkin", "carrot", "sunflower", "tuft"],
           "description": "Object placed on the cell, or null for none. House uses floors and optional buildingType. Fence uses fenceSide. Bridge is the only kind intended for water."
         },
         "floors": {
@@ -101,7 +106,7 @@
         },
         "buildingType": {
           "type": ["string", "null"],
-          "enum": [null, "cottage", "manor", "tower", "turret", "skyscraper"],
+          "enum": [null, "cottage", "manor", "tower", "turret", "skyscraper", "temple", "pagoda", "watchtower"],
           "description": "Forced single-cell house variant. null uses cluster logic. turret supports castle-style tower cells."
         },
         "fenceSide": {

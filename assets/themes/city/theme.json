@@ -1,0 +1,10 @@
+{
+  "id": "city",
+  "label": "City",
+  "description": "Modern city voxel pack using roads, manor blocks, skyscrapers, trees, plazas, and tactical alley encounters.",
+  "terrain": ["grass", "path", "dirt", "water"],
+  "objects": ["tree", "rock", "bridge", "tuft"],
+  "buildings": ["manor", "skyscraper"],
+  "characters": ["hero", "villain", "villager", "guard", "merchant"],
+  "defaultPreset": "city-grid"
+}

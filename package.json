@@ -7,8 +7,9 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/migrate.mjs",
     "sprites:extract": "node scripts/extract-sprite-assets.mjs",
+    "sprites:validate": "node scripts/validate-sprite-assets.mjs",
     "smoke:play": "node scripts/smoke-play-mode.mjs",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm run sprites:validate && npm run smoke:play"
   },
   "repository": {
     "type": "git",

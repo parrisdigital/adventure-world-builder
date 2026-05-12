@@ -568,6 +568,15 @@
     display: flex;
     gap: 8px;
   }
+  .theme-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .theme-actions .btn {
+    padding: 7px 8px;
+    font-size: 11.5px;
+  }
   .adventure-actions .btn {
     flex: 1 1 auto;
     padding: 8px 10px;
@@ -1705,6 +1714,20 @@
         <option value="escape">Escape</option>
       </select>
     </label>
+    <label class="adventure-select">
+      World style
+      <select id="world-theme-select">
+        <option value="classic">Classic</option>
+        <option value="japan">Japan</option>
+        <option value="china">China</option>
+        <option value="city">City</option>
+      </select>
+    </label>
+    <div class="theme-actions">
+      <button class="btn" id="theme-apply" type="button">Apply tools</button>
+      <button class="btn" id="theme-convert" type="button">Convert</button>
+      <button class="btn" id="theme-new" type="button">New world</button>
+    </div>
     <div class="adventure-marker-list" id="adventure-required"></div>
     <div class="adventure-errors" id="adventure-errors"></div>
     <div class="adventure-actions">
@@ -2300,6 +2323,14 @@
     trunk:     new THREE.MeshLambertMaterial({ color: 0x5c3818 }),
     leaves:    new THREE.MeshLambertMaterial({ color: 0x86d139 }),
     leavesDk:  new THREE.MeshLambertMaterial({ color: 0x5fab26 }),
+    sakura:    new THREE.MeshLambertMaterial({ color: 0xf2a9c9 }),
+    sakuraDk:  new THREE.MeshLambertMaterial({ color: 0xd979a8 }),
+    bamboo:    new THREE.MeshLambertMaterial({ color: 0x70b85c }),
+    bambooDk:  new THREE.MeshLambertMaterial({ color: 0x3f7f3b }),
+    templeRed: new THREE.MeshLambertMaterial({ color: 0xa83a2a }),
+    templeDark:new THREE.MeshLambertMaterial({ color: 0x1f2936 }),
+    templeWall:new THREE.MeshLambertMaterial({ color: 0xf2ead8 }),
+    lanternGlow:new THREE.MeshBasicMaterial({ color: 0xffcf66, transparent: true, opacity: 0.82 }),
 
     wallCream: new THREE.MeshLambertMaterial({ color: 0xf2dfb0 }),
     wallTrim:  new THREE.MeshLambertMaterial({ color: 0xe5cf99 }),
@@ -2376,6 +2407,8 @@
     chestBand:    new THREE.MeshLambertMaterial({ color: 0xd9a82b }),
     relicGlow:    new THREE.MeshBasicMaterial({ color: 0xf2f0a0, transparent: true, opacity: 0.78 }),
     playAttack:   new THREE.MeshBasicMaterial({ color: 0xf2c849, transparent: true, opacity: 0.52, depthWrite: false }),
+    playGuard:    new THREE.MeshBasicMaterial({ color: 0x78a8ff, transparent: true, opacity: 0.28, depthWrite: false }),
+    playHitSpark: new THREE.MeshBasicMaterial({ color: 0xfff0a8, transparent: true, opacity: 0.78, depthWrite: false }),
     playMove:     new THREE.MeshBasicMaterial({ color: 0x3a72c8, transparent: true, opacity: 0.18, depthWrite: false }),
     playReachable:new THREE.MeshBasicMaterial({ color: 0x3a72c8, transparent: true, opacity: 0.22, depthWrite: false }),
     playDashTile: new THREE.MeshBasicMaterial({ color: 0x2c9a78, transparent: true, opacity: 0.24, depthWrite: false }),
@@ -2602,6 +2635,154 @@
     g.add(tip);
 
     g.userData = { kind: 'tree', swayPhase: Math.random() * Math.PI * 2 };
+    castReceive(g);
+    return g;
+  }
+
+  function makeSakuraTree() {
+    const g = new THREE.Group();
+    const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.48, 0.18), M.trunk);
+    trunk.position.y = 0.24;
+    g.add(trunk);
+    [
+      { x: -0.18, y: 0.70, z: 0.02, s: 0.42, mat: M.sakura },
+      { x:  0.12, y: 0.78, z: 0.04, s: 0.46, mat: M.sakura },
+      { x:  0.00, y: 1.02, z: -0.10, s: 0.36, mat: M.sakuraDk },
+      { x:  0.24, y: 0.94, z: -0.12, s: 0.28, mat: M.sakura },
+      { x: -0.28, y: 0.90, z: -0.12, s: 0.26, mat: M.sakuraDk },
+    ].forEach(p => {
+      const bloom = new THREE.Mesh(roundedBox(p.s, p.s * 0.72, p.s, 0.07), p.mat);
+      bloom.position.set(p.x, p.y, p.z);
+      g.add(bloom);
+    });
+    g.userData = { kind: 'sakura', swayPhase: Math.random() * Math.PI * 2 };
+    castReceive(g);
+    return g;
+  }
+
+  function makeBambooCluster() {
+    const g = new THREE.Group();
+    const stalks = [
+      { x: -0.18, z: -0.06, h: 0.92 },
+      { x: -0.04, z:  0.08, h: 1.12 },
+      { x:  0.12, z: -0.08, h: 0.98 },
+      { x:  0.24, z:  0.10, h: 0.76 },
+    ];
+    stalks.forEach((s, i) => {
+      const stalk = new THREE.Mesh(new THREE.BoxGeometry(0.06, s.h, 0.06), i % 2 ? M.bamboo : M.bambooDk);
+      stalk.position.set(s.x, s.h / 2, s.z);
+      g.add(stalk);
+      for (let y = 0.22; y < s.h; y += 0.22) {
+        const ring = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.018, 0.075), M.bambooDk);
+        ring.position.set(s.x, y, s.z);
+        g.add(ring);
+      }
+      const leaf = new THREE.Mesh(roundedBox(0.20, 0.035, 0.08, 0.02), M.leaves);
+      leaf.position.set(s.x + 0.06, s.h - 0.08, s.z);
+      leaf.rotation.y = i * 0.7;
+      g.add(leaf);
+    });
+    g.userData = { kind: 'bamboo', swayPhase: Math.random() * Math.PI * 2 };
+    castReceive(g);
+    return g;
+  }
+
+  function makeStoneLantern() {
+    const g = new THREE.Group();
+    const base = new THREE.Mesh(roundedBox(0.28, 0.12, 0.28, 0.025), M.rockDk);
+    base.position.y = 0.06;
+    const stem = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.34, 0.12), M.rock);
+    stem.position.y = 0.29;
+    const housing = new THREE.Mesh(roundedBox(0.28, 0.20, 0.28, 0.025), M.rockHi);
+    housing.position.y = 0.58;
+    const glow = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.18), M.lanternGlow);
+    glow.position.y = 0.58;
+    const cap = new THREE.Mesh(roundedBox(0.38, 0.08, 0.38, 0.025), M.templeDark);
+    cap.position.y = 0.72;
+    g.add(base, stem, housing, glow, cap);
+    g.userData = { kind: 'lantern' };
+    castReceive(g);
+    return g;
+  }
+
+  function makeToriiGate() {
+    const g = new THREE.Group();
+    const postGeo = new THREE.BoxGeometry(0.10, 0.80, 0.10);
+    [-0.28, 0.28].forEach(x => {
+      const post = new THREE.Mesh(postGeo, M.templeRed);
+      post.position.set(x, 0.40, 0);
+      g.add(post);
+      const foot = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.08, 0.16), M.rockDk);
+      foot.position.set(x, 0.04, 0);
+      g.add(foot);
+    });
+    const lintel = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.12, 0.12), M.templeRed);
+    lintel.position.y = 0.78;
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.08, 0.18), M.templeDark);
+    roof.position.y = 0.90;
+    const center = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 0.08), M.templeRed);
+    center.position.y = 0.70;
+    g.add(lintel, roof, center);
+    g.userData = { kind: 'torii' };
+    castReceive(g);
+    return g;
+  }
+
+  function makePagoda(floors = 3) {
+    const g = new THREE.Group();
+    const levels = Math.max(2, Math.min(5, floors || 3));
+    let y = 0;
+    for (let i = 0; i < levels; i++) {
+      const w = 0.78 - i * 0.09;
+      const h = 0.26;
+      const body = new THREE.Mesh(roundedBox(w * 0.70, h, w * 0.62, 0.025), i % 2 ? M.templeWall : M.templeRed);
+      body.position.y = y + h / 2;
+      g.add(body);
+      const roof = new THREE.Mesh(roundedBox(w, 0.08, w * 0.78, 0.025), M.templeDark);
+      roof.position.y = y + h + 0.04;
+      g.add(roof);
+      y += h + 0.13;
+    }
+    const finial = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.18, 0.08), M.chestBand);
+    finial.position.y = y + 0.05;
+    g.add(finial);
+    g.userData = { kind: 'house', chimneyTops: [] };
+    castReceive(g);
+    return g;
+  }
+
+  function makeTempleHouse(floors = 1) {
+    const g = new THREE.Group();
+    const wallH = 0.44 + Math.max(0, floors - 1) * 0.16;
+    const base = new THREE.Mesh(roundedBox(0.86, 0.14, 0.76, 0.025), M.rockHi);
+    base.position.y = 0.07;
+    const walls = new THREE.Mesh(roundedBox(0.76, wallH, 0.58, 0.025), M.templeWall);
+    walls.position.y = 0.14 + wallH / 2;
+    const roof = new THREE.Mesh(roundedBox(0.96, 0.16, 0.76, 0.035), M.templeDark);
+    roof.position.y = 0.16 + wallH;
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.30, 0.035), M.door);
+    door.position.set(0, 0.26, 0.31);
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.70, 0.06, 0.06), M.bridgeWoodD);
+    rail.position.set(0, 0.32, 0.37);
+    g.add(base, walls, roof, door, rail);
+    g.userData = { kind: 'house', chimneyTops: [] };
+    castReceive(g);
+    return g;
+  }
+
+  function makeWatchtower(floors = 2) {
+    const g = new THREE.Group();
+    const h = 0.62 + Math.max(0, floors - 1) * 0.22;
+    const tower = new THREE.Mesh(roundedBox(0.42, h, 0.42, 0.025), M.templeWall);
+    tower.position.y = h / 2;
+    const trim = new THREE.Mesh(roundedBox(0.52, 0.08, 0.52, 0.025), M.bridgeWoodD);
+    trim.position.y = h + 0.04;
+    const roof = new THREE.Mesh(roundedBox(0.68, 0.14, 0.68, 0.03), M.templeDark);
+    roof.position.y = h + 0.15;
+    const slit = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.035), M.windowB);
+    slit.position.set(0, h * 0.55, 0.225);
+    g.add(tower, trim, roof, slit);
+    g.userData = { kind: 'house', chimneyTops: [] };
     castReceive(g);
     return g;
   }
@@ -4432,6 +4613,19 @@
     unlock_gate: 'Unlock the gate',
     escape: 'Reach the exit',
   };
+  const WORLD_THEME_IDS = ['classic', 'japan', 'china', 'city'];
+  const WORLD_THEME_LABELS = {
+    classic: 'Classic',
+    japan: 'Japan',
+    china: 'China',
+    city: 'City',
+  };
+  const WORLD_THEME_LS = 'tinyworld:world-theme';
+  function normalizeWorldTheme(theme) {
+    return WORLD_THEME_IDS.includes(theme) ? theme : 'classic';
+  }
+  let worldTheme = normalizeWorldTheme(localStorage.getItem(WORLD_THEME_LS) || 'classic');
+  document.body.dataset.worldTheme = worldTheme;
   const gameLayer = {
     objective: 'defeat_villain',
     markers: {},
@@ -4443,6 +4637,10 @@
     root: document.getElementById('adventure-panel'),
     status: document.getElementById('adventure-status'),
     objective: document.getElementById('adventure-objective-select'),
+    theme: document.getElementById('world-theme-select'),
+    themeApply: document.getElementById('theme-apply'),
+    themeConvert: document.getElementById('theme-convert'),
+    themeNew: document.getElementById('theme-new'),
     required: document.getElementById('adventure-required'),
     errors: document.getElementById('adventure-errors'),
     play: document.getElementById('adventure-play'),
@@ -4718,26 +4916,30 @@
   }
 
   const SPRITE_ROOT = 'assets/sprites/';
+  const SPRITE_DIRECTIONS = ['front', 'back', 'left', 'right'];
   const PLAY_SPRITES = {
     hero: {
-      idle: { right: 'hero/idle-right.png', left: 'hero/idle-left.png' },
-      move: { right: 'hero/move-right.png', left: 'hero/move-left.png' },
-      dash: { right: 'hero/dash-right.png', left: 'hero/dash-left.png' },
-      guard: { right: 'hero/guard-right.png', left: 'hero/guard-left.png' },
-      slash: { right: 'hero/slash-right.png', left: 'hero/slash-left.png' },
-      hit: { right: 'hero/hit-right.png', left: 'hero/hit-left.png' },
+      idle: { front: 'hero/idle-front.png', back: 'hero/idle-back.png', left: 'hero/idle-left.png', right: 'hero/idle-right.png' },
+      move: { front: 'hero/move-front.png', back: 'hero/move-back.png', left: 'hero/move-left.png', right: 'hero/move-right.png' },
+      dash: { front: 'hero/dash-front.png', back: 'hero/dash-back.png', left: 'hero/dash-left.png', right: 'hero/dash-right.png' },
+      guard: { front: 'hero/guard-front.png', back: 'hero/guard-back.png', left: 'hero/guard-left.png', right: 'hero/guard-right.png' },
+      slash: { front: 'hero/slash-front.png', back: 'hero/slash-back.png', left: 'hero/slash-left.png', right: 'hero/slash-right.png' },
+      hit: { front: 'hero/hit-front.png', back: 'hero/hit-back.png', left: 'hero/hit-left.png', right: 'hero/hit-right.png' },
+      defeated: { front: 'hero/defeated-front.png', back: 'hero/defeated-back.png', left: 'hero/defeated-left.png', right: 'hero/defeated-right.png' },
     },
     villain: {
-      idle: { right: 'villain/idle-right.png', left: 'villain/idle-left.png' },
-      move: { right: 'villain/move-right.png', left: 'villain/move-left.png' },
-      guard: { right: 'villain/guard-right.png', left: 'villain/guard-left.png' },
-      attack: { right: 'villain/attack-right.png', left: 'villain/attack-left.png' },
-      hit: { right: 'villain/hit-right.png', left: 'villain/hit-left.png' },
+      idle: { front: 'villain/idle-front.png', back: 'villain/idle-back.png', left: 'villain/idle-left.png', right: 'villain/idle-right.png' },
+      move: { front: 'villain/move-front.png', back: 'villain/move-back.png', left: 'villain/move-left.png', right: 'villain/move-right.png' },
+      guard: { front: 'villain/guard-front.png', back: 'villain/guard-back.png', left: 'villain/guard-left.png', right: 'villain/guard-right.png' },
+      attack: { front: 'villain/attack-front.png', back: 'villain/attack-back.png', left: 'villain/attack-left.png', right: 'villain/attack-right.png' },
+      hit: { front: 'villain/hit-front.png', back: 'villain/hit-back.png', left: 'villain/hit-left.png', right: 'villain/hit-right.png' },
+      defeated: { front: 'villain/defeated-front.png', back: 'villain/defeated-back.png', left: 'villain/defeated-left.png', right: 'villain/defeated-right.png' },
     },
     npc: {
-      villager: { default: 'npc/villager.png' },
-      farmer: { default: 'npc/farmer.png' },
-      guard: { default: 'npc/guard.png' },
+      villager: { front: 'npc/villager-front.png', back: 'npc/villager-back.png', left: 'npc/villager-left.png', right: 'npc/villager-right.png' },
+      merchant: { front: 'npc/merchant-front.png', back: 'npc/merchant-back.png', left: 'npc/merchant-left.png', right: 'npc/merchant-right.png' },
+      farmer: { front: 'npc/farmer-front.png', back: 'npc/farmer-back.png', left: 'npc/farmer-left.png', right: 'npc/farmer-right.png' },
+      guard: { front: 'npc/guard-front.png', back: 'npc/guard-back.png', left: 'npc/guard-left.png', right: 'npc/guard-right.png' },
     },
     chest: {
       closed: { default: 'chest/closed.png' },
@@ -4748,12 +4950,17 @@
   const spriteTextureLoader = new THREE.TextureLoader();
   const spriteTextureCache = new Map();
 
+  function normalizeSpriteDirection(direction) {
+    return SPRITE_DIRECTIONS.includes(direction) ? direction : 'front';
+  }
+
   function spriteAssetPath(role, action, direction) {
     const roleSet = PLAY_SPRITES[role];
     if (!roleSet) return '';
     const actionSet = roleSet[action] || roleSet.idle || roleSet.closed || roleSet.villager;
     if (!actionSet) return '';
-    return actionSet[direction] || actionSet.default || actionSet.right || actionSet.left || '';
+    const normalizedDirection = normalizeSpriteDirection(direction);
+    return actionSet[normalizedDirection] || actionSet.default || actionSet.front || actionSet.right || actionSet.left || '';
   }
 
   function loadSpriteTexture(assetPath, onReady, onError) {
@@ -4835,7 +5042,7 @@
   function setSpriteActorFrame(actor, action, direction) {
     const state = actor && actor.userData && actor.userData.spriteActor;
     if (!state) return false;
-    const normalizedDirection = direction === 'left' ? 'left' : 'right';
+    const normalizedDirection = normalizeSpriteDirection(direction);
     const assetPath = spriteAssetPath(state.role, action, normalizedDirection);
     if (!assetPath) return false;
     if (state.action === action && state.direction === normalizedDirection) return true;
@@ -4860,20 +5067,20 @@
   function makeHeroCharacter(opts) {
     opts = opts || {};
     const fallback = makeProceduralHeroCharacter({ name: 'heroFallback' });
-    return makeSpriteActor('hero', 'idle', Object.assign({ spriteW: 1.24, spriteH: 1.24, shadowRadius: 0.32 }, opts), fallback);
+    return makeSpriteActor('hero', 'idle', Object.assign({ direction: 'front', spriteW: 1.05, spriteH: 1.05, shadowRadius: 0.26 }, opts), fallback);
   }
 
   function makeVillainCharacter(opts) {
     opts = opts || {};
     const fallback = makeProceduralVillainCharacter({ name: 'villainFallback' });
-    return makeSpriteActor('villain', 'idle', Object.assign({ spriteW: 1.32, spriteH: 1.32, shadowRadius: 0.35 }, opts), fallback);
+    return makeSpriteActor('villain', 'idle', Object.assign({ direction: 'front', spriteW: 1.08, spriteH: 1.08, shadowRadius: 0.28 }, opts), fallback);
   }
 
   function makeNpcCharacter(variant, opts) {
     opts = opts || {};
-    const action = variant === 'farmer' || variant === 'guard' ? variant : 'villager';
+    const action = ['farmer', 'guard', 'merchant'].includes(variant) ? variant : 'villager';
     const fallback = makeProceduralNpcCharacter(variant, { name: 'npcFallback' });
-    return makeSpriteActor('npc', action, Object.assign({ direction: 'default', spriteW: 1.02, spriteH: 1.02, shadowRadius: 0.26 }, opts), fallback);
+    return makeSpriteActor('npc', action, Object.assign({ direction: 'front', spriteW: 1.02, spriteH: 1.02, shadowRadius: 0.25 }, opts), fallback);
   }
 
   function makeTreasureChest(opened, relic) {
@@ -5418,8 +5625,12 @@
     const level = cell.floors || 1;
     let mesh = null;
     if      (cell.kind === 'tree')      mesh = makeTree();
+    else if (cell.kind === 'sakura')    mesh = makeSakuraTree();
+    else if (cell.kind === 'bamboo')    mesh = makeBambooCluster();
     else if (cell.kind === 'rock')      mesh = makeRock(getGhostRockNeighbors(cells, x, z), level, x + 1000, z + 1000);
     else if (cell.kind === 'bridge')    mesh = makeBridge(ghostBridgeOrientation(cells, x, z), cell.floors || 1);
+    else if (cell.kind === 'lantern')   mesh = makeStoneLantern();
+    else if (cell.kind === 'torii')     mesh = makeToriiGate();
     else if (cell.kind === 'tuft')      mesh = makeTuft();
     else if (cell.kind === 'crop')      mesh = makeCrop();
     else if (cell.kind === 'corn')      mesh = makeCorn();
@@ -5433,6 +5644,9 @@
       else if (cell.buildingType === 'tower') mesh = makeStoneTower(Math.max(level, 2));
       else if (cell.buildingType === 'turret') mesh = makeTurret(level);
       else if (cell.buildingType === 'skyscraper') mesh = makeSkyscraper(Math.max(level, 4));
+      else if (cell.buildingType === 'temple') mesh = makeTempleHouse(level);
+      else if (cell.buildingType === 'pagoda') mesh = makePagoda(Math.max(level, 3));
+      else if (cell.buildingType === 'watchtower') mesh = makeWatchtower(Math.max(level, 2));
       else mesh = makeHouse(level);
     }
     if (mesh && cell.kind !== 'house' && cell.kind !== 'fence' && cell.kind !== 'rock') addEnhancementBits(mesh, cell.kind, level);
@@ -6171,8 +6385,12 @@
     let setGridUserData = true;
 
     if      (kind === 'tree')      mesh = makeTree();
+    else if (kind === 'sakura')    mesh = makeSakuraTree();
+    else if (kind === 'bamboo')    mesh = makeBambooCluster();
     else if (kind === 'rock')      mesh = makeRock(getRockNeighbors(x, z), level, x, z, world[x][z].terrain === 'water');
     else if (kind === 'bridge')    mesh = makeBridge(getBridgeOrientation(x, z), level);
+    else if (kind === 'lantern')   mesh = makeStoneLantern();
+    else if (kind === 'torii')     mesh = makeToriiGate();
     else if (kind === 'tuft')      mesh = makeTuft();
     else if (kind === 'crop')      mesh = makeCrop();
     else if (kind === 'corn')      mesh = makeCorn();
@@ -6207,6 +6425,12 @@
         mesh = makeStoneTower(Math.max(floors, 2));
       } else if (bType === 'turret') {
         mesh = makeTurret(floors);
+      } else if (bType === 'temple') {
+        mesh = makeTempleHouse(floors);
+      } else if (bType === 'pagoda') {
+        mesh = makePagoda(Math.max(floors, 3));
+      } else if (bType === 'watchtower') {
+        mesh = makeWatchtower(Math.max(floors, 2));
       } else {
       const cluster = findHouseCluster(x, z);
       if (!cluster.isAnchor) return;          // non-anchor cluster cells render nothing
@@ -6879,9 +7103,14 @@
         { id: 'tower',      label: 'Tower',     buildingType: 'tower',      hint: 'stone tower w/ conical roof' },
         { id: 'turret',     label: 'Castle',    buildingType: 'turret',     hint: 'castle turret / keep' },
         { id: 'highrise',   label: 'High-rise', buildingType: 'skyscraper', hint: 'glass tower' },
+        { id: 'temple',     label: 'Temple',    buildingType: 'temple',     hint: 'themed temple hall', themes: ['japan', 'china'] },
+        { id: 'pagoda',     label: 'Pagoda',    buildingType: 'pagoda',     hint: 'tiered landmark tower', themes: ['japan', 'china'] },
+        { id: 'watchtower', label: 'Watch',     buildingType: 'watchtower', hint: 'themed watchtower', themes: ['japan', 'china'] },
       ],
     },
     { id: 'tree',   label: 'Tree',   kind: 'tree',  color: '#6fb442', shortcut: '6', group: 'nature' },
+    { id: 'sakura', label: 'Sakura', kind: 'sakura', color: '#e7a7c7', group: 'nature', themes: ['japan'] },
+    { id: 'bamboo', label: 'Bamboo', kind: 'bamboo', color: '#5da35a', group: 'nature', themes: ['japan', 'china'] },
     { id: 'fence',  label: 'Fence',  kind: 'fence', color: '#8a5a3b', shortcut: '7', group: 'build',
       variants: [
         { id: 'edge',    label: 'Edge',      fenceSide: 'auto',     hint: 'nearest clicked edge' },
@@ -6895,6 +7124,8 @@
     },
     { id: 'rock',   label: 'Rock',   kind: 'rock',  color: '#9b9a8f', shortcut: '8', group: 'nature' },
     { id: 'bridge', label: 'Bridge', kind: 'bridge', terrainOverride: 'water', color: '#8b5a32', shortcut: '9', group: 'build' },
+    { id: 'lantern', label: 'Lantern', kind: 'lantern', color: '#d9a82b', group: 'decor', themes: ['japan', 'china'] },
+    { id: 'torii',   label: 'Torii',   kind: 'torii',   color: '#b84838', group: 'build', themes: ['japan'] },
     { id: 'crop',      label: 'Crop',      kind: 'crop',      terrainOverride: 'dirt', color: '#86c544', shortcut: 'g', group: 'crops' },
     { id: 'corn',      label: 'Corn',      kind: 'corn',      terrainOverride: 'dirt', color: '#f2c849', shortcut: 'n', group: 'crops' },
     { id: 'wheat',     label: 'Wheat',     kind: 'wheat',     terrainOverride: 'dirt', color: '#e6c354', shortcut: 'w', group: 'crops' },
@@ -6959,8 +7190,12 @@
     const k = tool.kind;
     if (!k) return null;
     if (k === 'tree')      return makeTree();
+    if (k === 'sakura')    return makeSakuraTree();
+    if (k === 'bamboo')    return makeBambooCluster();
     if (k === 'rock')      return makeRock({ n: false, s: false, e: false, w: false }, 1, 0, 0);
     if (k === 'bridge')    return makeBridge('x');
+    if (k === 'lantern')   return makeStoneLantern();
+    if (k === 'torii')     return makeToriiGate();
     if (k === 'tuft')      return makeTuft();
     if (k === 'crop')      return makeCrop();
     if (k === 'corn')      return makeCorn();
@@ -6976,6 +7211,9 @@
       if (bType === 'tower')      return makeStoneTower(2);
       if (bType === 'turret')     return makeTurret(2);
       if (bType === 'skyscraper') return makeSkyscraper(4);
+      if (bType === 'temple')     return makeTempleHouse(1);
+      if (bType === 'pagoda')     return makePagoda(3);
+      if (bType === 'watchtower') return makeWatchtower(2);
       return makeHouse(2);
     }
     return null;
@@ -6987,6 +7225,19 @@
     if (tool.kind === 'bridge') return 'water';
     if (CROP_KINDS && CROP_KINDS.has && CROP_KINDS.has(tool.kind)) return 'dirt';
     return 'grass';
+  }
+
+  function toolAvailableForTheme(tool) {
+    if (!tool || tool.hidden) return false;
+    return !tool.themes || tool.themes.includes(worldTheme);
+  }
+
+  function variantAvailableForTheme(variant) {
+    return !variant || !variant.themes || variant.themes.includes(worldTheme);
+  }
+
+  function availableVariantsForTheme(tool) {
+    return (tool.variants || []).filter(variantAvailableForTheme);
   }
 
   function buildToolThumb(tool, canvas) {
@@ -7117,8 +7368,9 @@
     bar.innerHTML = '';
     thumbScenes.forEach(t => { try { t.scene.traverse(o => safeDisposeGeometry(o.geometry)); } catch(_) {} });
     thumbScenes.clear();
+    if (!toolAvailableForTheme(selectedTool)) selectedTool = DEFAULT_TOOL;
     TOOLS.forEach((t, i) => {
-      if (t.hidden) return;
+      if (!toolAvailableForTheme(t)) return;
       const btn = document.createElement('button');
       btn.className = 'tool' + (['grass', 'house', 'crop', 'marker-player', 'erase'].includes(t.id) ? ' group-start' : '');
       btn.dataset.id = t.id;
@@ -7183,8 +7435,9 @@
     hoverMesh.material = t.erase ? M.hoverErase : M.hover;
 
     const flyoutEl = document.getElementById('flyout');
-    if (t.variants && t.variants.length) {
-      if (!t.activeVariant) t.activeVariant = t.variants[0];
+    const variants = availableVariantsForTheme(t);
+    if (variants.length) {
+      if (!variants.includes(t.activeVariant)) t.activeVariant = variants[0];
       renderFlyout(flyoutEl, t);
       flyoutEl.hidden = false;
       const btn = document.querySelector('.tool[data-id="' + t.id + '"]');
@@ -7200,7 +7453,9 @@
 
   function renderFlyout(el, tool) {
     el.innerHTML = '';
-    tool.variants.forEach(v => {
+    const variants = availableVariantsForTheme(tool);
+    if (!variants.includes(tool.activeVariant)) tool.activeVariant = variants[0] || null;
+    variants.forEach(v => {
       const item = document.createElement('button');
       item.className = 'flyout-item' + (v === tool.activeVariant ? ' active' : '');
       item.textContent = v.label;
@@ -7714,7 +7969,7 @@
         }
       }
     }
-    const data = { v: STORAGE_VERSION, gridSize: GRID, cells, gameLayer: serializeGameLayer(), cameraMode, toolId: selectedTool && selectedTool.id };
+    const data = { v: STORAGE_VERSION, gridSize: GRID, worldTheme, cells, gameLayer: serializeGameLayer(), cameraMode, toolId: selectedTool && selectedTool.id };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url  = URL.createObjectURL(blob);
     const ts   = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
@@ -8066,6 +8321,9 @@
     playerMesh: null,
     villainMesh: null,
     attackMesh: null,
+    guardMesh: null,
+    hitSparkMesh: null,
+    damagePopups: [],
     moveMesh: null,
   };
 
@@ -8112,6 +8370,73 @@
     ring.visible = false;
     ring.renderOrder = 3;
     return ring;
+  }
+
+  function makeGuardBubble() {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.025, 8, 32), M.playGuard);
+    ring.name = 'guardBubble';
+    ring.rotation.x = -Math.PI / 2;
+    ring.visible = false;
+    ring.renderOrder = 6;
+    return ring;
+  }
+
+  function makeHitSpark() {
+    const spark = new THREE.Mesh(new THREE.RingGeometry(0.12, 0.36, 6), M.playHitSpark);
+    spark.name = 'hitSpark';
+    spark.rotation.x = -Math.PI / 2;
+    spark.visible = false;
+    spark.renderOrder = 7;
+    return spark;
+  }
+
+  function addDamagePopup(entity, text, blocked) {
+    if (!entity) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = '700 30px Inter, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = 'rgba(42,39,34,0.55)';
+    ctx.fillStyle = blocked ? '#78a8ff' : '#fff0a8';
+    ctx.strokeText(text, 64, 32);
+    ctx.fillText(text, 64, 32);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.encoding = THREE.sRGBEncoding;
+    texture.userData = texture.userData || {};
+    texture.userData.disposeWithGroup = true;
+    const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false });
+    material.userData.disposeWithGroup = true;
+    const sprite = new THREE.Sprite(material);
+    sprite.name = 'damagePopup';
+    sprite.scale.set(0.62, 0.31, 1);
+    sprite.position.copy(playWorldPosition(entity));
+    sprite.position.y += 1.08;
+    sprite.renderOrder = 20;
+    sprite.userData.life = 0.72;
+    sprite.userData.maxLife = 0.72;
+    playMode.damagePopups.push(sprite);
+    playGroup.add(sprite);
+  }
+
+  function tickDamagePopups(dt) {
+    if (!playMode.damagePopups || !playMode.damagePopups.length) return;
+    for (let i = playMode.damagePopups.length - 1; i >= 0; i--) {
+      const sprite = playMode.damagePopups[i];
+      sprite.userData.life -= dt;
+      const t = Math.max(0, sprite.userData.life / sprite.userData.maxLife);
+      sprite.position.y += dt * 0.42;
+      sprite.material.opacity = Math.min(1, t * 1.6);
+      if (sprite.userData.life <= 0) {
+        playGroup.remove(sprite);
+        disposeGroup(sprite);
+        playMode.damagePopups.splice(i, 1);
+      }
+    }
   }
 
   function clearTacticsOverlay() {
@@ -8266,6 +8591,9 @@
     playMode.playerMesh = null;
     playMode.villainMesh = null;
     playMode.attackMesh = null;
+    playMode.guardMesh = null;
+    playMode.hitSparkMesh = null;
+    playMode.damagePopups = [];
     playMode.moveMesh = null;
     clearTacticsOverlay();
   }
@@ -8359,6 +8687,9 @@
     if (adventurePanel.objective && adventurePanel.objective.value !== objective) {
       adventurePanel.objective.value = objective;
     }
+    if (adventurePanel.theme && adventurePanel.theme.value !== worldTheme) {
+      adventurePanel.theme.value = worldTheme;
+    }
     const required = playRequiredMarkers(objective);
     const validation = validateGameLayerForPlay();
     if (adventurePanel.status) {
@@ -8392,6 +8723,212 @@
       adventurePanel.play.disabled = !validation.ok;
       adventurePanel.play.title = validation.ok ? 'Start Play Mode' : 'Complete required adventure markers first';
     }
+  }
+
+  function setWorldTheme(theme, opts) {
+    const next = normalizeWorldTheme(theme);
+    const changed = next !== worldTheme;
+    worldTheme = next;
+    document.body.dataset.worldTheme = worldTheme;
+    if (adventurePanel.theme && adventurePanel.theme.value !== worldTheme) {
+      adventurePanel.theme.value = worldTheme;
+    }
+    try { localStorage.setItem(WORLD_THEME_LS, worldTheme); } catch (_) {}
+    if (typeof buildToolbar === 'function') buildToolbar();
+    const flyout = document.getElementById('flyout');
+    if (flyout) flyout.hidden = true;
+    if (typeof ensureGhostPreview === 'function') ensureGhostPreview();
+    if (typeof resetGhostTransform === 'function') resetGhostTransform();
+    if (!opts || !opts.skipSave) saveState();
+    if (changed && typeof playSfx === 'function') playSfx('place', 0.35);
+    updateAdventurePanel();
+  }
+
+  function themedCell(x, z, terrain, kind, floors, buildingType, fenceSide) {
+    return {
+      x,
+      z,
+      terrain: terrain || 'grass',
+      kind: kind || null,
+      floors: floors || 1,
+      terrainFloors: 1,
+      buildingType: buildingType || null,
+      fenceSide: fenceSide || null,
+    };
+  }
+
+  function dedupeThemedCells(cells) {
+    const byCoordinate = new Map();
+    for (const cell of cells) byCoordinate.set(cell.x + ',' + cell.z, cell);
+    return Array.from(byCoordinate.values());
+  }
+
+  function buildJapanesePreset() {
+    const cells = [];
+    for (let x = 0; x < GRID; x++) cells.push(themedCell(x, 2, 'water', null));
+    for (let z = 0; z < GRID; z++) if (z !== 2) cells.push(themedCell(3, z, 'path', null));
+    for (let x = 1; x <= 6; x++) cells.push(themedCell(x, 5, 'path', null));
+    [
+      themedCell(3, 2, 'water', 'bridge', 2),
+      themedCell(1, 1, 'grass', 'house', 3, 'pagoda'),
+      themedCell(5, 4, 'grass', 'house', 2, 'temple'),
+      themedCell(7, 1, 'grass', 'house', 2, 'watchtower'),
+      themedCell(3, 3, 'path', 'torii'),
+      themedCell(2, 3, 'grass', 'lantern'),
+      themedCell(4, 3, 'grass', 'lantern'),
+      themedCell(0, 5, 'grass', 'sakura', 2),
+      themedCell(7, 6, 'grass', 'sakura', 1),
+      themedCell(6, 5, 'grass', 'bamboo', 2),
+      themedCell(6, 6, 'grass', 'bamboo', 1),
+      themedCell(5, 7, 'dirt', 'crop', 1),
+      themedCell(6, 7, 'dirt', 'wheat', 1),
+      themedCell(7, 7, 'dirt', 'crop', 1),
+      themedCell(0, 0, 'grass', 'rock', 2),
+      themedCell(1, 6, 'grass', 'lantern'),
+    ].forEach(c => cells.push(c));
+    return {
+      v: STORAGE_VERSION,
+      gridSize: GRID,
+      worldTheme: 'japan',
+      cells: dedupeThemedCells(cells),
+      gameLayer: {
+        objective: 'defeat_villain',
+        markers: {
+          playerSpawn: { x: 3, z: 6 },
+          villainSpawn: { x: 6, z: 1 },
+          chest: { x: 2, z: 5 },
+          npc: { x: 4, z: 5 },
+          exit: { x: 0, z: 7 },
+        },
+      },
+      cameraMode: 'soft',
+      toolId: 'sakura',
+    };
+  }
+
+  function buildThemePreset(theme) {
+    const normalized = normalizeWorldTheme(theme);
+    if (normalized === 'japan') return buildJapanesePreset();
+    if (normalized === 'city') {
+      return {
+        v: STORAGE_VERSION,
+        gridSize: GRID,
+        worldTheme: 'city',
+        cells: dedupeThemedCells([
+          themedCell(2, 1, 'grass', 'house', 4, 'skyscraper'),
+          themedCell(5, 1, 'grass', 'house', 5, 'skyscraper'),
+          themedCell(2, 5, 'grass', 'house', 2, 'manor'),
+          themedCell(5, 5, 'grass', 'house', 3, 'skyscraper'),
+          ...Array.from({ length: GRID }, (_, x) => themedCell(x, 3, 'path', null)),
+          ...Array.from({ length: GRID }, (_, z) => themedCell(3, z, 'path', null)),
+          themedCell(0, 6, 'grass', 'tree'),
+          themedCell(7, 6, 'grass', 'tree'),
+        ]),
+        gameLayer: {
+          objective: 'defeat_villain',
+          markers: {
+            playerSpawn: { x: 3, z: 6 },
+            villainSpawn: { x: 6, z: 3 },
+            chest: { x: 1, z: 3 },
+            npc: { x: 4, z: 3 },
+            exit: { x: 0, z: 3 },
+          },
+        },
+        cameraMode: 'soft',
+        toolId: 'house',
+      };
+    }
+    if (normalized === 'china') {
+      const preset = buildJapanesePreset();
+      preset.worldTheme = 'china';
+      preset.cells = preset.cells.map(c => c.kind === 'sakura' ? Object.assign({}, c, { kind: 'bamboo' }) : c);
+      preset.toolId = 'bamboo';
+      return preset;
+    }
+    return null;
+  }
+
+  function convertCellForTheme(cell, theme, x, z) {
+    const next = Object.assign({}, cell || {});
+    next.terrain = next.terrain || 'grass';
+    next.kind = next.kind || null;
+    next.floors = next.floors || 1;
+    next.terrainFloors = next.terrainFloors || 1;
+    next.buildingType = next.kind === 'house' ? (next.buildingType || null) : null;
+    next.fenceSide = next.kind === 'fence' ? normalizeFenceSide(next.fenceSide) : null;
+    if (theme === 'japan' || theme === 'china') {
+      if (next.kind === 'tree') next.kind = theme === 'japan' ? (cellRand(x, z, 991) < 0.72 ? 'sakura' : 'bamboo') : 'bamboo';
+      if (next.kind === 'house') {
+        if (next.buildingType === 'tower') next.buildingType = 'watchtower';
+        else if (next.buildingType === 'manor') next.buildingType = 'temple';
+        else if (next.buildingType === 'skyscraper') next.buildingType = 'pagoda';
+        else if (!next.buildingType && next.floors >= 3) next.buildingType = 'pagoda';
+        else if (!next.buildingType && cellRand(x, z, 992) < 0.28) next.buildingType = 'temple';
+      }
+    } else if (theme === 'city') {
+      if (next.kind === 'sakura' || next.kind === 'bamboo') next.kind = 'tree';
+      if (next.kind === 'lantern' || next.kind === 'torii') next.kind = null;
+      if (next.kind === 'house') {
+        if (['pagoda', 'temple', 'watchtower', 'tower'].includes(next.buildingType) || next.floors >= 3) {
+          next.buildingType = 'skyscraper';
+          next.floors = Math.max(next.floors, 4);
+        }
+      }
+    } else {
+      if (next.kind === 'sakura' || next.kind === 'bamboo') next.kind = 'tree';
+      if (next.kind === 'lantern' || next.kind === 'torii') next.kind = null;
+      if (next.kind === 'house' && ['pagoda', 'temple', 'watchtower'].includes(next.buildingType)) {
+        next.buildingType = next.buildingType === 'watchtower' ? 'tower' : null;
+      }
+    }
+    if (next.kind !== 'house') next.buildingType = null;
+    if (next.kind !== 'fence') next.fenceSide = null;
+    return next;
+  }
+
+  function convertWorldToTheme(theme) {
+    const nextTheme = normalizeWorldTheme(theme);
+    setWorldTheme(nextTheme, { skipSave: true });
+    suppressSave = true;
+    for (let x = 0; x < GRID; x++) {
+      for (let z = 0; z < GRID; z++) {
+        const c = convertCellForTheme(world[x][z], nextTheme, x, z);
+        setCell(x, z, {
+          terrain: c.terrain,
+          terrainFloors: c.terrainFloors,
+          kind: c.kind,
+          floors: c.floors,
+          buildingType: c.buildingType,
+          fenceSide: c.fenceSide,
+          extras: c.extras || [],
+          rotationY: c.rotationY || 0,
+          offsetX: c.offsetX || 0,
+          offsetZ: c.offsetZ || 0,
+          animate: false,
+          forceTile: true,
+        });
+      }
+    }
+    suppressSave = false;
+    saveState();
+    updateAdventurePanel();
+  }
+
+  function loadThemePreset(theme) {
+    const normalized = normalizeWorldTheme(theme);
+    if (normalized === 'classic') {
+      setWorldTheme('classic', { skipSave: true });
+      loadInitialScene();
+      resetCameraDefaults();
+      updateAdventurePanel();
+      return true;
+    }
+    const preset = buildThemePreset(normalized);
+    if (!preset) return false;
+    setWorldTheme(normalized, { skipSave: true });
+    const ok = applyState(preset);
+    if (ok) resetCameraDefaults();
+    return ok;
   }
 
   function playBuildPatrolPoints(origin) {
@@ -8727,10 +9264,12 @@
     playMode.villain.guarding = false;
     if (damage <= 0) {
       playMode.villain.hitFlash = 0.10;
+      addDamagePopup(playMode.villain, 'Guard', true);
       return;
     }
     playMode.villain.hp -= damage;
     playMode.villain.hitFlash = 0.18;
+    addDamagePopup(playMode.villain, '-' + damage, guarded);
     if (typeof playSfx === 'function') playSfx('knock', 0.55);
     if (playMode.villain.hp <= 0) {
       playMode.villain.hp = 0;
@@ -8800,9 +9339,13 @@
     const guarded = playMode.player && playMode.player.guarding;
     const damage = guarded ? Math.max(0, amount - 1) : amount;
     if (guarded && typeof playSfx === 'function') playSfx('knock', 0.28);
-    if (damage <= 0) return;
+    if (damage <= 0) {
+      addDamagePopup(playMode.player, 'Guard', true);
+      return;
+    }
     playMode.player.hp -= damage;
     playMode.player.hitFlash = 0.16;
+    addDamagePopup(playMode.player, '-' + damage, guarded);
     if (typeof playSfx === 'function') playSfx('knock', 0.45);
     if (playMode.player.hp <= 0) {
       playMode.player.hp = 0;
@@ -8827,7 +9370,7 @@
     if (d <= 0.001) return;
     entity.dirX = dx / d;
     entity.dirZ = dz / d;
-    if (Math.abs(entity.dirX) > 0.12) entity.facing = entity.dirX < 0 ? 'left' : 'right';
+    entity.facing = playDirectionFromDelta(dx, dz, entity.facing);
   }
 
   function playFaceVisualToward(entity, target) {
@@ -8840,7 +9383,13 @@
     if (d <= 0.001) return;
     entity.dirX = dx / d;
     entity.dirZ = dz / d;
-    if (Math.abs(entity.dirX) > 0.12) entity.facing = entity.dirX < 0 ? 'left' : 'right';
+    entity.facing = playDirectionFromDelta(dx, dz, entity.facing);
+  }
+
+  function playDirectionFromDelta(dx, dz, fallback) {
+    if (Math.hypot(dx, dz) <= 0.001) return normalizeSpriteDirection(fallback);
+    if (Math.abs(dx) >= Math.abs(dz)) return dx < 0 ? 'left' : 'right';
+    return dz > 0 ? 'back' : 'front';
   }
 
   function playEntityFacingAngle(entity, fallbackTarget) {
@@ -8854,11 +9403,13 @@
     else if (fallbackTarget) playFaceToward(entity, fallbackTarget);
     if (entity && entity.facing) return entity.facing;
     const dx = entity ? (entity.dirX || 0) : 0;
-    return dx < -0.12 ? 'left' : 'right';
+    const dz = entity ? (entity.dirZ || 0) : 0;
+    return playDirectionFromDelta(dx, dz, 'front');
   }
 
   function playSpriteActionFor(role, entity) {
     if (!entity) return 'idle';
+    if (entity.hp === 0) return 'defeated';
     if (entity.hitFlash > 0) return 'hit';
     if (role === 'hero') {
       if (entity.slashTimer > 0 || entity.action === 'slash') return 'slash';
@@ -9054,7 +9605,7 @@
     }
     if (playMode.villainMesh) {
       playMode.villainMesh.position.copy(villainPos);
-      playMode.villainMesh.visible = playMode.villain.hp > 0;
+      playMode.villainMesh.visible = true;
       const spriteDriven = updateSpriteActorForPlay(playMode.villainMesh, 'villain', playMode.villain, playMode.player);
       if (!spriteDriven) {
         playMode.villainMesh.rotation.y = playEntityFacingAngle(playMode.villain, playMode.player);
@@ -9069,7 +9620,30 @@
       playMode.attackMesh.visible = playMode.attackPulse > 0;
       const s = 1 + (1 - Math.max(0, playMode.attackPulse) / 0.18) * 0.35;
       playMode.attackMesh.scale.set(s, s, s);
-      playMode.attackMesh.rotation.z = -playMode.playerMesh.rotation.y;
+      playMode.attackMesh.rotation.z = -playEntityFacingAngle(playMode.player, playMode.villain);
+    }
+    if (playMode.guardMesh) {
+      const guardTarget = playMode.player.guarding || playMode.player.guardTimer > 0 ? playMode.player :
+        (playMode.villain.guarding ? playMode.villain : null);
+      playMode.guardMesh.visible = !!guardTarget;
+      if (guardTarget) {
+        const p = playWorldPosition(guardTarget);
+        playMode.guardMesh.position.set(p.x, p.y + 0.08, p.z);
+        const pulse = 1 + Math.sin(playMode.time * 12) * 0.06;
+        playMode.guardMesh.scale.set(pulse, pulse, pulse);
+      }
+    }
+    if (playMode.hitSparkMesh) {
+      const hitTarget = playMode.villain.hitFlash > 0 ? playMode.villain :
+        (playMode.player.hitFlash > 0 ? playMode.player : null);
+      playMode.hitSparkMesh.visible = !!hitTarget;
+      if (hitTarget) {
+        const p = playWorldPosition(hitTarget);
+        playMode.hitSparkMesh.position.set(p.x, p.y + 0.46, p.z);
+        const life = Math.max(playMode.villain.hitFlash || 0, playMode.player.hitFlash || 0);
+        const sparkScale = 0.7 + (0.2 - Math.min(0.2, life)) * 2.2;
+        playMode.hitSparkMesh.scale.set(sparkScale, sparkScale, sparkScale);
+      }
     }
     if (playMode.moveMesh) {
       playMode.moveMesh.position.copy(playerPos);
@@ -9221,6 +9795,7 @@
     playMode.player.hitFlash = Math.max(0, playMode.player.hitFlash - dt);
     playMode.villain.hitFlash = Math.max(0, playMode.villain.hitFlash - dt);
     playMode.attackPulse = Math.max(0, playMode.attackPulse - dt);
+    tickDamagePopups(dt);
     playAdvanceMovements(dt);
 
     if (!playMode.ended) {
@@ -9335,7 +9910,7 @@
       hitFlash: 0,
       dirX: 0,
       dirZ: -1,
-      facing: 'right',
+      facing: 'front',
     };
     playMode.villain = {
       x: setup.villain.x,
@@ -9363,11 +9938,16 @@
       dirZ: 0,
       facing: 'left',
     };
+    playFaceToward(playMode.player, playMode.villain);
+    playFaceToward(playMode.villain, playMode.player);
     playMode.playerMesh = makePlayerPawn();
     playMode.villainMesh = makeVillainPawn();
     playMode.attackMesh = makeAttackRing();
+    playMode.guardMesh = makeGuardBubble();
+    playMode.hitSparkMesh = makeHitSpark();
+    playMode.damagePopups = [];
     playMode.moveMesh = makeMoveRangeMesh();
-    playGroup.add(playMode.playerMesh, playMode.villainMesh, playMode.attackMesh, playMode.moveMesh);
+    playGroup.add(playMode.playerMesh, playMode.villainMesh, playMode.attackMesh, playMode.guardMesh, playMode.hitSparkMesh, playMode.moveMesh);
     playGroup.visible = true;
     playOverlayGroup.visible = true;
     playKeys.clear();
@@ -9518,6 +10098,22 @@
   if (adventurePanel.objective) adventurePanel.objective.addEventListener('change', () => {
     setGameObjective(adventurePanel.objective.value);
   });
+  if (adventurePanel.theme) adventurePanel.theme.addEventListener('change', () => {
+    setWorldTheme(adventurePanel.theme.value);
+  });
+  if (adventurePanel.themeApply) adventurePanel.themeApply.addEventListener('click', () => {
+    setWorldTheme(adventurePanel.theme ? adventurePanel.theme.value : worldTheme);
+  });
+  if (adventurePanel.themeConvert) adventurePanel.themeConvert.addEventListener('click', () => {
+    const next = normalizeWorldTheme(adventurePanel.theme ? adventurePanel.theme.value : worldTheme);
+    if (!confirm('Convert current objects toward the ' + (WORLD_THEME_LABELS[next] || next) + ' style? This keeps the board layout and markers.')) return;
+    convertWorldToTheme(next);
+  });
+  if (adventurePanel.themeNew) adventurePanel.themeNew.addEventListener('click', () => {
+    const next = normalizeWorldTheme(adventurePanel.theme ? adventurePanel.theme.value : worldTheme);
+    if (!confirm('Start a new ' + (WORLD_THEME_LABELS[next] || next) + ' world? This replaces the current board.')) return;
+    loadThemePreset(next);
+  });
   if (adventurePanel.play) adventurePanel.play.addEventListener('click', () => enterPlayMode());
   updateAdventurePanel();
 
@@ -9564,6 +10160,7 @@
       mode: playMode.active ? 'play' : 'editor',
       result: playMode.result || (playMode.active ? 'active' : null),
       gridSize: GRID,
+      worldTheme,
       coordinateSystem: 'grid coordinates, x right, z back, origin at front-left of current board',
       gameLayer: serializeGameLayer(),
       playValidation: validation.ok ? [] : validation.errors,
@@ -9627,6 +10224,14 @@
     clear: clearGameLayer,
     setObjective: setGameObjective,
     validate: validateGameLayerForPlay,
+  };
+
+  window.__tinyworldTheme = {
+    get: () => worldTheme,
+    set: theme => setWorldTheme(theme),
+    convert: theme => convertWorldToTheme(theme),
+    preset: theme => loadThemePreset(theme),
+    labels: () => Object.assign({}, WORLD_THEME_LABELS),
   };
 
   // -------- render settings --------
@@ -10424,6 +11029,16 @@
       ],
       "description": "Optional editable board size. Defaults to 8 when omitted."
     },
+    "worldTheme": {
+      "type": "string",
+      "enum": [
+        "classic",
+        "japan",
+        "china",
+        "city"
+      ],
+      "description": "Theme pack controlling palette, available tools, props, and character styling. Defaults to classic."
+    },
     "cells": {
       "type": "array",
       "description": "Sparse list of non-default cells on the current grid. x/z must be inside the active grid size. Each (x,z) should appear at most once.",
@@ -10545,6 +11160,10 @@
             "fence",
             "rock",
             "bridge",
+            "sakura",
+            "bamboo",
+            "lantern",
+            "torii",
             "crop",
             "corn",
             "wheat",
@@ -10578,7 +11197,10 @@
             "manor",
             "tower",
             "turret",
-            "skyscraper"
+            "skyscraper",
+            "temple",
+            "pagoda",
+            "watchtower"
           ],
           "description": "Forced single-cell house variant. null uses cluster logic. turret supports castle-style tower cells."
         },
@@ -10632,7 +11254,7 @@
       },
       kind: {
         type: ['string', 'null'],
-        enum: [null, 'house', 'tree', 'fence', 'rock', 'hill', 'bridge', 'crop', 'corn', 'wheat', 'pumpkin', 'carrot', 'sunflower', 'tuft'],
+        enum: [null, 'house', 'tree', 'fence', 'rock', 'hill', 'bridge', 'sakura', 'bamboo', 'lantern', 'torii', 'crop', 'corn', 'wheat', 'pumpkin', 'carrot', 'sunflower', 'tuft'],
       },
       floors: {
         type: 'integer',
@@ -10641,7 +11263,7 @@
       },
       buildingType: {
         type: ['string', 'null'],
-        enum: [null, 'cottage', 'manor', 'tower', 'turret', 'skyscraper'],
+        enum: [null, 'cottage', 'manor', 'tower', 'turret', 'skyscraper', 'temple', 'pagoda', 'watchtower'],
       },
     },
   };
@@ -10691,6 +11313,7 @@
       'You are a level designer for Adventure World Builder, an isometric voxel world and adventure board.',
       'Output a JSON object that strictly matches the provided JSON Schema. Do not include prose, markdown fences, or explanations — only the JSON object.',
       'Use gridSize 8 unless the prompt asks for a larger board. Grid coordinates must stay inside gridSize: x is left-right, z is front-back. Default cell is grass with no object.',
+      'Set worldTheme to classic, japan, china, or city when the prompt asks for a themed world. Theme-specific supported pieces include sakura, bamboo, lantern, torii, and house buildingType temple|pagoda|watchtower.',
       'Only emit cells that differ from defaults — the renderer fills the rest.',
       'Houses cluster automatically when buildingType is null: adjacent houses merge into linear, L/T/+, or 2x2 forms. To force a single-cell variant set buildingType to cottage|manor|tower|turret|skyscraper.',
       'Repeat-tapping the same object increases floors/intensity: houses grow upward; trees, rocks, bridges, fences, tufts, and crops become larger, denser, or more detailed.',
@@ -10743,12 +11366,13 @@
     return JSON.stringify({
       world: {
         v: STORAGE_VERSION,
+        worldTheme,
         cells: snapshotCells(),
         gameLayer: serializeGameLayer(),
       },
       batchSize: AUTO_BATCH_SIZE,
       refreshPolicy: 'The browser will reuse these suggestions locally for several Auto placements before asking again.',
-      availableTools: TOOLS.filter(t => !t.auto).map(t => ({
+      availableTools: TOOLS.filter(t => !t.auto && toolAvailableForTheme(t)).map(t => ({
         id: t.id,
         terrain: t.terrain || null,
         kind: t.kind || null,
@@ -10774,10 +11398,11 @@
     if (typeof data.v === 'string') data.v = parseInt(data.v, 10);
     if (data.v !== 1 && data.v !== 2 && data.v !== 3 && data.v !== 4 && data.v !== 5) return 'unsupported v: ' + data.v;
     if (!Array.isArray(data.cells)) return 'cells must be an array';
+    if (data.worldTheme !== undefined && !WORLD_THEME_IDS.includes(data.worldTheme)) return 'worldTheme invalid: ' + data.worldTheme;
     const gridLimit = HOME_GRID_OPTIONS.includes(data.gridSize) ? data.gridSize : HOME_GRID_MAX;
     const okTerrain = new Set(['grass','path','dirt','water']);
-    const okKind = new Set([null,'house','tree','fence','rock','hill','bridge','crop','corn','wheat','pumpkin','carrot','sunflower','tuft']);
-    const okBT = new Set([null,'cottage','manor','tower','turret','skyscraper']);
+    const okKind = new Set([null,'house','tree','fence','rock','hill','bridge','sakura','bamboo','lantern','torii','crop','corn','wheat','pumpkin','carrot','sunflower','tuft']);
+    const okBT = new Set([null,'cottage','manor','tower','turret','skyscraper','temple','pagoda','watchtower']);
     const okFenceSide = new Set([null,'n','s','e','w','center-x','center-z']);
     const seen = new Set();
     for (let i = 0; i < data.cells.length; i++) {
@@ -10948,7 +11573,7 @@
   }
 
   function autoSnapshotSignature() {
-    return JSON.stringify({ v: STORAGE_VERSION, cells: snapshotCells(), gameLayer: serializeGameLayer() });
+    return JSON.stringify({ v: STORAGE_VERSION, worldTheme, cells: snapshotCells(), gameLayer: serializeGameLayer() });
   }
 
   function adaptAutoSuggestionToCell(action, x, z) {
@@ -11142,6 +11767,7 @@
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
           v: STORAGE_VERSION,
           gridSize: GRID,
+          worldTheme,
           cells,
           gameLayer: serializeGameLayer(),
           cameraMode,
@@ -11173,6 +11799,7 @@
       // step inside setHomeGridSize and just dispose old meshes.
       setHomeGridSize(data.gridSize, { skipRebuild: true });
     }
+    if (data.worldTheme !== undefined) setWorldTheme(data.worldTheme, { skipSave: true });
     suppressSave = true;
     const overrides = new Map();
     for (const entry of data.cells) {
@@ -11744,7 +12371,7 @@
       if (!userProfile) { alert('Please save your profile first.'); showTab('profile'); return; }
       const name = saveName.value.trim() || ('Build ' + new Date().toLocaleDateString());
       const cells = snapshotCells();
-      const data = { v: STORAGE_VERSION, gridSize: GRID, cells, gameLayer: serializeGameLayer(), cameraMode, toolId: selectedTool && selectedTool.id };
+      const data = { v: STORAGE_VERSION, gridSize: GRID, worldTheme, cells, gameLayer: serializeGameLayer(), cameraMode, toolId: selectedTool && selectedTool.id };
       await apiCall('/api/builds', 'POST', { name, data });
       saveName.value = '';
       loadBuilds();

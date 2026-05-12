@@ -1,68 +1,117 @@
 {
   "version": 1,
   "frame": {
-    "width": 256,
-    "height": 256
+    "width": 320,
+    "height": 320
   },
   "anchor": "bottom-center",
   "sprites": {
     "hero": {
       "idle": {
         "right": "hero/idle-right.png",
-        "left": "hero/idle-left.png"
+        "left": "hero/idle-left.png",
+        "front": "hero/idle-front.png",
+        "back": "hero/idle-back.png"
       },
       "move": {
         "right": "hero/move-right.png",
-        "left": "hero/move-left.png"
+        "left": "hero/move-left.png",
+        "front": "hero/move-front.png",
+        "back": "hero/move-back.png"
       },
       "dash": {
         "right": "hero/dash-right.png",
-        "left": "hero/dash-left.png"
+        "left": "hero/dash-left.png",
+        "front": "hero/dash-front.png",
+        "back": "hero/dash-back.png"
       },
       "guard": {
         "right": "hero/guard-right.png",
-        "left": "hero/guard-left.png"
+        "left": "hero/guard-left.png",
+        "front": "hero/guard-front.png",
+        "back": "hero/guard-back.png"
       },
       "slash": {
         "right": "hero/slash-right.png",
-        "left": "hero/slash-left.png"
+        "left": "hero/slash-left.png",
+        "front": "hero/slash-front.png",
+        "back": "hero/slash-back.png"
       },
       "hit": {
         "right": "hero/hit-right.png",
-        "left": "hero/hit-left.png"
+        "left": "hero/hit-left.png",
+        "front": "hero/hit-front.png",
+        "back": "hero/hit-back.png"
+      },
+      "defeated": {
+        "right": "hero/defeated-right.png",
+        "left": "hero/defeated-left.png",
+        "front": "hero/defeated-front.png",
+        "back": "hero/defeated-back.png"
       }
     },
     "villain": {
       "idle": {
         "right": "villain/idle-right.png",
-        "left": "villain/idle-left.png"
+        "left": "villain/idle-left.png",
+        "front": "villain/idle-front.png",
+        "back": "villain/idle-back.png"
       },
       "move": {
         "right": "villain/move-right.png",
-        "left": "villain/move-left.png"
+        "left": "villain/move-left.png",
+        "front": "villain/move-front.png",
+        "back": "villain/move-back.png"
       },
       "guard": {
         "right": "villain/guard-right.png",
-        "left": "villain/guard-left.png"
+        "left": "villain/guard-left.png",
+        "front": "villain/guard-front.png",
+        "back": "villain/guard-back.png"
       },
       "attack": {
         "right": "villain/attack-right.png",
-        "left": "villain/attack-left.png"
+        "left": "villain/attack-left.png",
+        "front": "villain/attack-front.png",
+        "back": "villain/attack-back.png"
       },
       "hit": {
         "right": "villain/hit-right.png",
-        "left": "villain/hit-left.png"
+        "left": "villain/hit-left.png",
+        "front": "villain/hit-front.png",
+        "back": "villain/hit-back.png"
+      },
+      "defeated": {
+        "right": "villain/defeated-right.png",
+        "left": "villain/defeated-left.png",
+        "front": "villain/defeated-front.png",
+        "back": "villain/defeated-back.png"
       }
     },
     "npc": {
       "villager": {
-        "default": "npc/villager.png"
+        "right": "npc/villager-right.png",
+        "left": "npc/villager-left.png",
+        "front": "npc/villager-front.png",
+        "back": "npc/villager-back.png"
+      },
+      "merchant": {
+        "right": "npc/merchant-right.png",
+        "left": "npc/merchant-left.png",
+        "front": "npc/merchant-front.png",
+        "back": "npc/merchant-back.png"
       },
       "farmer": {
-        "default": "npc/farmer.png"
+        "right": "npc/farmer-right.png",
+        "left": "npc/farmer-left.png",
+        "front": "npc/farmer-front.png",
+        "back": "npc/farmer-back.png"
       },
       "guard": {
-        "default": "npc/guard.png"
+        "right": "npc/guard-right.png",
+        "left": "npc/guard-left.png",
+        "front": "npc/guard-front.png",
+        "back": "npc/guard-back.png"
       }
     },
     "chest": {

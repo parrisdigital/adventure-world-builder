@@ -5,6 +5,7 @@ import { PNG } from 'pngjs';
 const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const sources = {
   action: path.join(repoRoot, 'assets/concepts/character-action-sheet.png'),
+  turnaround: path.join(repoRoot, 'assets/concepts/character-turnaround-sheet.png'),
 };
 const outRoot = path.join(repoRoot, 'assets/sprites');
 
@@ -104,7 +105,7 @@ function trimAlpha(src, threshold, pad) {
 function resizeToCanvas(src, frame, opts = {}) {
   const maxW = opts.maxW || frame.width - 24;
   const maxH = opts.maxH || frame.height - 24;
-  const bottom = opts.bottom ?? 10;
+  const bottom = opts.bottom ?? 22;
   const scale = Math.min(maxW / src.width, maxH / src.height);
   const sw = Math.max(1, Math.round(src.width * scale));
   const sh = Math.max(1, Math.round(src.height * scale));
@@ -124,33 +125,264 @@ function resizeToCanvas(src, frame, opts = {}) {
       out.data[di + 3] = src.data[si + 3];
     }
   }
+  return removeEdgeScraps(out, { allowLargeEdgeComponents: !!opts.allowLargeEdgeComponents });
+}
+
+function removeEdgeScraps(src, opts = {}) {
+  const threshold = 18;
+  const edgePad = 40;
+  const seen = new Uint8Array(src.width * src.height);
+  const comps = [];
+  const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  for (let y = 0; y < src.height; y++) {
+    for (let x = 0; x < src.width; x++) {
+      const start = y * src.width + x;
+      if (seen[start]) continue;
+      seen[start] = 1;
+      if (src.data[start * 4 + 3] <= threshold) continue;
+      const pixels = [[x, y]];
+      let minX = x, maxX = x, minY = y, maxY = y;
+      for (let i = 0; i < pixels.length; i++) {
+        const [cx, cy] = pixels[i];
+        minX = Math.min(minX, cx);
+        maxX = Math.max(maxX, cx);
+        minY = Math.min(minY, cy);
+        maxY = Math.max(maxY, cy);
+        for (const [dx, dy] of dirs) {
+          const nx = cx + dx;
+          const ny = cy + dy;
+          if (nx < 0 || nx >= src.width || ny < 0 || ny >= src.height) continue;
+          const ni = ny * src.width + nx;
+          if (seen[ni]) continue;
+          seen[ni] = 1;
+          if (src.data[ni * 4 + 3] > threshold) pixels.push([nx, ny]);
+        }
+      }
+      comps.push({ pixels, area: pixels.length, minX, maxX, minY, maxY });
+    }
+  }
+  if (comps.length <= 1) return src;
+  const mainArea = Math.max(...comps.map(c => c.area));
+  const out = PNG.sync.read(PNG.sync.write(src));
+  for (const comp of comps) {
+    const edge = Math.min(comp.minX, comp.minY, src.width - 1 - comp.maxX, src.height - 1 - comp.maxY);
+    const small = comp.area < Math.max(800, mainArea * 0.05);
+    const tinyNoise = comp.area < (opts.allowLargeEdgeComponents ? 24 : 64);
+    const detachedEdgeScrap = edge < edgePad && (small || (!opts.allowLargeEdgeComponents && comp.area < mainArea * 0.70));
+    if (!tinyNoise && !detachedEdgeScrap) continue;
+    for (const [x, y] of comp.pixels) {
+      out.data[(y * out.width + x) * 4 + 3] = 0;
+    }
+  }
+  for (let i = 0; i < out.data.length; i += 4) {
+    if (out.data[i + 3] > threshold) continue;
+    out.data[i] = 0;
+    out.data[i + 1] = 0;
+    out.data[i + 2] = 0;
+    out.data[i + 3] = 0;
+  }
   return out;
 }
 
-const frame = { width: 256, height: 256 };
+const frame = { width: 320, height: 320 };
 const sourcePngs = Object.fromEntries(Object.entries(sources).map(([key, file]) => [key, readPng(file)]));
 
+function actionFrame(rect, extra = {}) {
+  return { source: 'action', rect, ...extra };
+}
+
+function turnaroundFrame(rect, extra = {}) {
+  return { source: 'turnaround', rect, ...extra };
+}
+
+function fourWay({ right, left, front, back }) {
+  return {
+    right,
+    left: left || { ...right, flip: !right.flip },
+    front: front || right,
+    back: back || front || right,
+  };
+}
+
 const spriteSpecs = [
-  { role: 'hero', action: 'idle',   rect: [48, 58, 170, 214], maxH: 226 },
-  { role: 'hero', action: 'move',   rect: [284, 58, 180, 214], maxH: 226 },
-  { role: 'hero', action: 'dash',   rect: [500, 50, 246, 220], maxH: 226 },
-  { role: 'hero', action: 'guard',  rect: [758, 48, 206, 222], maxH: 226 },
-  { role: 'hero', action: 'slash',  rect: [980, 26, 286, 244], maxH: 232 },
-  { role: 'hero', action: 'hit',    rect: [1310, 50, 202, 220], maxH: 226 },
+  {
+    role: 'hero',
+    action: 'idle',
+    maxH: 248,
+    frames: fourWay({
+      right: actionFrame([18, 38, 220, 238], { maxW: 284 }),
+      front: turnaroundFrame([208, 26, 190, 202]),
+      back: turnaroundFrame([956, 22, 198, 210], { maxW: 250 }),
+    }),
+  },
+  {
+    role: 'hero',
+    action: 'move',
+    maxH: 248,
+    frames: fourWay({
+      right: actionFrame([260, 44, 228, 234], { maxW: 286 }),
+      front: turnaroundFrame([778, 24, 194, 208], { maxW: 250 }),
+      back: turnaroundFrame([956, 22, 198, 210], { maxW: 250 }),
+    }),
+  },
+  {
+    role: 'hero',
+    action: 'dash',
+    maxH: 252,
+    frames: fourWay({
+      right: actionFrame([448, 42, 314, 236], { maxW: 300, allowLargeEdgeComponents: true }),
+      front: turnaroundFrame([778, 24, 194, 208], { maxW: 250 }),
+      back: turnaroundFrame([956, 22, 198, 210], { maxW: 250 }),
+    }),
+  },
+  {
+    role: 'hero',
+    action: 'guard',
+    maxH: 248,
+    frames: fourWay({
+      right: actionFrame([728, 26, 262, 250], { maxW: 292 }),
+      front: turnaroundFrame([208, 26, 190, 202]),
+      back: turnaroundFrame([956, 22, 198, 210], { maxW: 250 }),
+    }),
+  },
+  {
+    role: 'hero',
+    action: 'slash',
+    maxH: 258,
+    frames: fourWay({
+      right: actionFrame([990, 14, 320, 266], { maxW: 306, allowLargeEdgeComponents: true }),
+      front: turnaroundFrame([208, 26, 190, 202]),
+      back: turnaroundFrame([956, 22, 198, 210], { maxW: 250 }),
+    }),
+  },
+  {
+    role: 'hero',
+    action: 'hit',
+    maxH: 248,
+    frames: fourWay({
+      right: actionFrame([1286, 30, 246, 246], { maxW: 286 }),
+      front: turnaroundFrame([208, 26, 190, 202]),
+      back: turnaroundFrame([956, 22, 198, 210], { maxW: 250 }),
+    }),
+  },
+  {
+    role: 'hero',
+    action: 'defeated',
+    maxH: 238,
+    bottom: 22,
+    frames: fourWay({
+      right: actionFrame([1286, 30, 246, 246], { maxW: 286 }),
+      front: actionFrame([1286, 30, 246, 246], { maxW: 286 }),
+      back: actionFrame([1286, 30, 246, 246], { maxW: 286 }),
+    }),
+  },
 
-  { role: 'villain', action: 'idle',   rect: [36, 310, 194, 238], maxH: 234 },
-  { role: 'villain', action: 'move',   rect: [500, 302, 244, 250], maxH: 234 },
-  { role: 'villain', action: 'guard',  rect: [272, 304, 208, 246], maxH: 234 },
-  { role: 'villain', action: 'attack', rect: [952, 300, 312, 252], maxH: 238 },
-  { role: 'villain', action: 'hit',    rect: [1280, 318, 230, 222], maxH: 228 },
+  {
+    role: 'villain',
+    action: 'idle',
+    maxH: 254,
+    frames: fourWay({
+      right: actionFrame([18, 292, 230, 264], { maxW: 286 }),
+      front: turnaroundFrame([22, 232, 204, 218], { maxW: 260 }),
+      back: turnaroundFrame([1150, 228, 212, 214], { maxW: 262 }),
+    }),
+  },
+  {
+    role: 'villain',
+    action: 'move',
+    maxH: 254,
+    frames: fourWay({
+      right: actionFrame([476, 284, 292, 278], { maxW: 300 }),
+      front: turnaroundFrame([22, 232, 204, 218], { maxW: 260 }),
+      back: turnaroundFrame([1150, 228, 212, 214], { maxW: 262 }),
+    }),
+  },
+  {
+    role: 'villain',
+    action: 'guard',
+    maxH: 254,
+    frames: fourWay({
+      right: actionFrame([252, 286, 246, 268], { maxW: 288 }),
+      front: turnaroundFrame([22, 232, 204, 218], { maxW: 260 }),
+      back: turnaroundFrame([1150, 228, 212, 214], { maxW: 262 }),
+    }),
+  },
+  {
+    role: 'villain',
+    action: 'attack',
+    maxH: 260,
+    frames: fourWay({
+      right: actionFrame([940, 274, 380, 294], { maxW: 292, allowLargeEdgeComponents: true }),
+      front: turnaroundFrame([22, 232, 204, 218], { maxW: 260 }),
+      back: turnaroundFrame([1150, 228, 212, 214], { maxW: 262 }),
+    }),
+  },
+  {
+    role: 'villain',
+    action: 'hit',
+    maxH: 254,
+    frames: fourWay({
+      right: actionFrame([1260, 302, 272, 250], { maxW: 292 }),
+      front: turnaroundFrame([22, 232, 204, 218], { maxW: 260 }),
+      back: turnaroundFrame([1150, 228, 212, 214], { maxW: 262 }),
+    }),
+  },
+  {
+    role: 'villain',
+    action: 'defeated',
+    maxH: 238,
+    bottom: 22,
+    frames: fourWay({
+      right: actionFrame([1250, 306, 282, 248], { maxW: 292 }),
+      front: actionFrame([1250, 306, 282, 248], { maxW: 292 }),
+      back: actionFrame([1250, 306, 282, 248], { maxW: 292 }),
+    }),
+  },
 
-  { role: 'npc', action: 'villager', rect: [372, 574, 176, 196], maxH: 212 },
-  { role: 'npc', action: 'farmer',   rect: [666, 554, 188, 216], maxH: 212 },
-  { role: 'npc', action: 'guard',    rect: [858, 560, 186, 214], maxH: 212 },
+  {
+    role: 'npc',
+    action: 'villager',
+    maxH: 238,
+    frames: fourWay({
+      right: actionFrame([354, 558, 216, 222], { maxW: 250 }),
+      front: turnaroundFrame([218, 446, 180, 196]),
+      back: turnaroundFrame([966, 444, 182, 198]),
+    }),
+  },
+  {
+    role: 'npc',
+    action: 'merchant',
+    maxH: 238,
+    frames: fourWay({
+      right: turnaroundFrame([778, 448, 192, 196], { maxW: 250 }),
+      front: turnaroundFrame([218, 446, 180, 196]),
+      back: turnaroundFrame([966, 444, 182, 198]),
+    }),
+  },
+  {
+    role: 'npc',
+    action: 'farmer',
+    maxH: 238,
+    frames: fourWay({
+      right: actionFrame([644, 536, 236, 250], { maxW: 254 }),
+      front: turnaroundFrame([218, 446, 180, 196]),
+      back: turnaroundFrame([966, 444, 182, 198]),
+    }),
+  },
+  {
+    role: 'npc',
+    action: 'guard',
+    maxH: 238,
+    frames: fourWay({
+      right: actionFrame([840, 536, 228, 250], { maxW: 254 }),
+      front: turnaroundFrame([30, 648, 184, 214], { maxW: 244 }),
+      back: turnaroundFrame([968, 648, 186, 166], { maxW: 244 }),
+    }),
+  },
 
-  { role: 'chest', action: 'closed', rect: [248, 808, 220, 184], maxW: 230, maxH: 178, bottom: 28 },
-  { role: 'chest', action: 'open',   rect: [548, 790, 246, 204], maxW: 236, maxH: 190, bottom: 28 },
-  { role: 'chest', action: 'relic',  rect: [786, 786, 246, 208], maxW: 236, maxH: 194, bottom: 28 },
+  { role: 'chest', action: 'closed', maxW: 274, maxH: 210, bottom: 36, frames: { default: actionFrame([230, 792, 260, 214]) } },
+  { role: 'chest', action: 'open',   maxW: 282, maxH: 224, bottom: 36, frames: { default: actionFrame([526, 770, 288, 236]) } },
+  { role: 'chest', action: 'relic',  maxW: 282, maxH: 228, bottom: 36, frames: { default: actionFrame([760, 764, 300, 244]) } },
 ];
 
 const manifest = {
@@ -160,27 +392,27 @@ const manifest = {
   sprites: {},
 };
 
+let written = 0;
 for (const spec of spriteSpecs) {
-  const cropped = cropWithAlpha(sourcePngs.action, spec.rect);
-  const directions = spec.role === 'chest' || spec.role === 'npc'
-    ? [{ name: 'default', flip: false }]
-    : [{ name: 'right', flip: false }, { name: 'left', flip: true }];
-  for (const direction of directions) {
+  for (const [directionName, frameSpec] of Object.entries(spec.frames)) {
+    const cropped = cropWithAlpha(sourcePngs[frameSpec.source], frameSpec.rect);
     const image = resizeToCanvas(cropped, frame, {
-      maxW: spec.maxW || 238,
-      maxH: spec.maxH || 228,
-      bottom: spec.bottom ?? 10,
-      flip: direction.flip,
+      maxW: frameSpec.maxW || spec.maxW || 238,
+      maxH: frameSpec.maxH || spec.maxH || 228,
+      bottom: spec.bottom ?? 22,
+      flip: !!frameSpec.flip,
+      allowLargeEdgeComponents: spec.allowLargeEdgeComponents || frameSpec.allowLargeEdgeComponents,
     });
-    const file = direction.name === 'default'
+    const file = directionName === 'default'
       ? path.join(outRoot, spec.role, `${spec.action}.png`)
-      : path.join(outRoot, spec.role, `${spec.action}-${direction.name}.png`);
+      : path.join(outRoot, spec.role, `${spec.action}-${directionName}.png`);
     writePng(file, image);
     manifest.sprites[spec.role] ||= {};
     manifest.sprites[spec.role][spec.action] ||= {};
-    manifest.sprites[spec.role][spec.action][direction.name] = path.relative(outRoot, file).replaceAll(path.sep, '/');
+    manifest.sprites[spec.role][spec.action][directionName] = path.relative(outRoot, file).replaceAll(path.sep, '/');
+    written += 1;
   }
 }
 
 writeFileSync(path.join(outRoot, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
-console.log(`Wrote ${spriteSpecs.length} sprite specs to ${path.relative(repoRoot, outRoot)}`);
+console.log(`Wrote ${written} sprite frames from ${spriteSpecs.length} specs to ${path.relative(repoRoot, outRoot)}`);

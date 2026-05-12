@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,12 +10,36 @@ const port = Number(process.env.TINYWORLD_PORT || 4173);
 const debugPort = Number(process.env.TINYWORLD_DEBUG_PORT || 9223);
 const url = `http://127.0.0.1:${port}/tiny-world-builder.html`;
 const appHtml = readFileSync(path.join(repoRoot, 'tiny-world-builder.html'), 'utf8');
+const spriteManifest = JSON.parse(readFileSync(path.join(repoRoot, 'assets/sprites/manifest.json'), 'utf8'));
 
 if (appHtml.includes('document.write')) {
   throw new Error('Optional auth loading must not use document.write; it can swallow following script tags in production.');
 }
 if (!appHtml.includes('vendor/three-r128.min.js')) {
   throw new Error('The app must load the vendored Three.js runtime for reliable static hosting.');
+}
+for (const [role, actions] of Object.entries({
+  hero: ['idle', 'move', 'dash', 'slash', 'guard', 'hit', 'defeated'],
+  villain: ['idle', 'move', 'attack', 'guard', 'hit', 'defeated'],
+})) {
+  for (const action of actions) {
+    for (const direction of ['front', 'back', 'left', 'right']) {
+      const rel = spriteManifest.sprites?.[role]?.[action]?.[direction];
+      if (!rel) throw new Error(`Sprite manifest missing ${role}.${action}.${direction}`);
+      if (!existsSync(path.join(repoRoot, 'assets/sprites', rel))) {
+        throw new Error(`Sprite file missing for ${role}.${action}.${direction}: ${rel}`);
+      }
+    }
+  }
+}
+for (const variant of ['villager', 'merchant', 'farmer', 'guard']) {
+  for (const direction of ['front', 'back', 'left', 'right']) {
+    const rel = spriteManifest.sprites?.npc?.[variant]?.[direction];
+    if (!rel) throw new Error(`Sprite manifest missing npc.${variant}.${direction}`);
+    if (!existsSync(path.join(repoRoot, 'assets/sprites', rel))) {
+      throw new Error(`Sprite file missing for npc.${variant}.${direction}: ${rel}`);
+    }
+  }
 }
 
 function findChrome() {
@@ -137,7 +161,7 @@ async function main() {
     await evaluate(`new Promise((resolve, reject) => {
     const started = Date.now();
     (function check() {
-      if (window.__tinyworldPlay && window.__tinyworldGameLayer && window.render_game_to_text && window.advanceTime) resolve(true);
+      if (window.__tinyworldPlay && window.__tinyworldGameLayer && window.__tinyworldTheme && window.render_game_to_text && window.advanceTime) resolve(true);
       else if (Date.now() - started > 15000) reject(new Error('game hooks not ready'));
       else setTimeout(check, 100);
     })();
@@ -160,6 +184,55 @@ async function main() {
       };
     })()`);
     if (!releaseUi.ok) throw new Error('Credits/About modal did not expose source attribution');
+
+    const themeContract = await evaluate(`(() => {
+      window.__tinyworldPlay.exit({ silent: true, restoreCamera: false });
+      window.__tinyworldTheme.preset('japan');
+      const japanState = JSON.parse(window.render_game_to_text());
+      const japanCells = snapshotCells();
+      const hasThemedPieces = japanCells.some(c => {
+        const kind = Array.isArray(c) ? c[3] : c.kind;
+        const buildingType = Array.isArray(c) ? c[5] : c.buildingType;
+        return ['sakura', 'bamboo', 'lantern', 'torii'].includes(kind) ||
+          ['temple', 'pagoda', 'watchtower'].includes(buildingType);
+      });
+      const imported = window.applyState({
+        v: 5,
+        gridSize: 8,
+        worldTheme: 'city',
+        cells: [
+          { x: 1, z: 1, terrain: 'path', kind: 'house', buildingType: 'skyscraper', floors: 4, terrainFloors: 1 },
+        ],
+        gameLayer: {
+          objective: 'defeat_villain',
+          markers: {
+            playerSpawn: { x: 0, z: 7 },
+            villainSpawn: { x: 5, z: 3 },
+          },
+        },
+      });
+      const importedState = JSON.parse(window.render_game_to_text());
+      const themeLabels = window.__tinyworldTheme.labels();
+      window.__tinyworldTheme.preset('classic');
+      return {
+        japanTheme: japanState.worldTheme,
+        hasThemedPieces,
+        imported,
+        importedTheme: importedState.worldTheme,
+        importedLayer: importedState.gameLayer,
+        labels: Object.keys(themeLabels),
+      };
+    })()`);
+    if (themeContract.japanTheme !== 'japan' ||
+        !themeContract.hasThemedPieces ||
+        !themeContract.imported ||
+        themeContract.importedTheme !== 'city' ||
+        !themeContract.labels.includes('classic') ||
+        !themeContract.labels.includes('japan') ||
+        !themeContract.labels.includes('china') ||
+        !themeContract.labels.includes('city')) {
+      throw new Error('Theme contract failed: ' + JSON.stringify(themeContract));
+    }
 
     const baseMarkers = {
       playerSpawn: { x: 0, z: 7 },
@@ -214,6 +287,14 @@ async function main() {
       window.__tinyworldPlay.attack();
       const preview = JSON.parse(window.render_game_to_text());
       window.__tinyworldPlay.restart();
+      const backProbe = window.__tinyworldPlay.state();
+      backProbe.player.x = 0;
+      backProbe.player.z = 6;
+      backProbe.player.renderX = 0;
+      backProbe.player.renderZ = 6;
+      const moveBackOk = window.__tinyworldPlay.moveTo(0, 7);
+      const moveBack = JSON.parse(window.render_game_to_text());
+      window.__tinyworldPlay.restart();
       const moveFacingOk = window.__tinyworldPlay.moveTo(2, 7);
       const moveRight = JSON.parse(window.render_game_to_text());
       window.advanceTime(500);
@@ -261,11 +342,12 @@ async function main() {
       window.__tinyworldPlay.endTurn();
       window.advanceTime(500);
       const enemyResolved = JSON.parse(window.render_game_to_text());
-      return { movedOk, moved, movedResolved, preview, moveFacingOk, moveRight, moveRightResolved, left, right, dashSelected, dashMovedOk, dashMoving, dashed, guarded, hpBeforeEnemy, enemyResolved };
+      return { movedOk, moved, movedResolved, preview, moveBackOk, moveBack, moveFacingOk, moveRight, moveRightResolved, left, right, dashSelected, dashMovedOk, dashMoving, dashed, guarded, hpBeforeEnemy, enemyResolved };
     })()`);
     if (!tacticsActions.movedOk ||
         tacticsActions.moved.player.x !== 0 ||
         tacticsActions.moved.player.z !== 6 ||
+        tacticsActions.moved.player.facing !== 'front' ||
         !tacticsActions.moved.player.moving ||
         tacticsActions.moved.player.pathLength < 2 ||
         tacticsActions.moved.activePath.length < 2 ||
@@ -275,6 +357,8 @@ async function main() {
         tacticsActions.movedResolved.player.renderZ !== 6 ||
         tacticsActions.preview.selectedAction !== 'slash' ||
         tacticsActions.preview.attackTiles <= 0 ||
+        !tacticsActions.moveBackOk ||
+        tacticsActions.moveBack.player.facing !== 'back' ||
         !tacticsActions.moveFacingOk ||
         !tacticsActions.moveRight.player.moving ||
         tacticsActions.moveRight.player.facing !== 'right' ||
@@ -296,6 +380,33 @@ async function main() {
         tacticsActions.enemyResolved.turn !== 'player' ||
         tacticsActions.enemyResolved.player.hp >= tacticsActions.hpBeforeEnemy) {
       throw new Error('Tactical movement, facing, or actions failed: ' + JSON.stringify(tacticsActions));
+    }
+    const spriteRuntime = await evaluate(`new Promise(resolve => setTimeout(() => {
+      const play = window.__tinyworldPlay.state();
+      const playerTexture = play.playerMesh?.userData?.spriteActor?.material?.map;
+      const villainTexture = play.villainMesh?.userData?.spriteActor?.material?.map;
+      const playerImage = playerTexture?.image;
+      const villainImage = villainTexture?.image;
+      const result = {
+        playerActor: !!play.playerMesh?.userData?.spriteActor,
+        villainActor: !!play.villainMesh?.userData?.spriteActor,
+        playerAction: play.playerMesh?.userData?.spriteActor?.action || '',
+        villainAction: play.villainMesh?.userData?.spriteActor?.action || '',
+        playerDirection: play.playerMesh?.userData?.spriteActor?.direction || '',
+        villainDirection: play.villainMesh?.userData?.spriteActor?.direction || '',
+        villainTextureError: !!villainTexture?.userData?.error,
+        playerSrc: playerImage?.currentSrc || playerImage?.src || '',
+        villainSrc: villainImage?.currentSrc || villainImage?.src || '',
+        playerLoaded: !!(playerTexture?.userData?.loaded || playerImage?.complete),
+        villainLoaded: !!(villainTexture?.userData?.loaded || villainImage?.complete),
+      };
+      resolve(result);
+    }, 350))`);
+    if (!spriteRuntime.playerSrc.includes('/assets/sprites/hero/') ||
+        !spriteRuntime.villainSrc.includes('/assets/sprites/villain/') ||
+        !spriteRuntime.playerLoaded ||
+        !spriteRuntime.villainLoaded) {
+      throw new Error('Runtime did not load hero/villain sprite textures: ' + JSON.stringify(spriteRuntime));
     }
     await evaluate(`window.__tinyworldPlay.restart()`);
     const defeat = await evaluate(`(() => {
@@ -427,13 +538,15 @@ async function main() {
       const ok = typeof window.applyState === 'function' && window.applyState({
         v: 5,
         gridSize: 8,
+        worldTheme: 'japan',
         cells: [],
         gameLayer: before,
       });
       const after = window.__tinyworldGameLayer.state();
-      return { ok, before, after, validation: window.__tinyworldGameLayer.validate() };
+      return { ok, before, after, worldTheme: JSON.parse(window.render_game_to_text()).worldTheme, validation: window.__tinyworldGameLayer.validate() };
     })()`);
     if (!preserved.ok ||
+        preserved.worldTheme !== 'japan' ||
         JSON.stringify(preserved.before) !== JSON.stringify(preserved.after) ||
         !preserved.validation.ok) {
       throw new Error('Export/import did not preserve gameLayer: ' + JSON.stringify(preserved));
@@ -453,6 +566,8 @@ async function main() {
     console.log(JSON.stringify({
       ok: true,
       releaseUi,
+      themeContract,
+      spriteRuntime,
       defeat,
       npcLine,
       collect,
