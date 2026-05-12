@@ -1,0 +1,29 @@
+assets/themes/classic/theme.json
+  s_61d189c31ea8c5::t_9e3a42f6ad955a 9-26
+docs/theme-pack-execution-plan.md
+  s_61d189c31ea8c5::t_a4bbf54d34af79 1-320
+README.md
+  s_61d189c31ea8c5::t_1d7b53c4bc0012 80-81
+assets/themes/city/theme.json
+  s_61d189c31ea8c5::t_4e608cd767dc52 9-26
+assets/themes/china/theme.json
+  s_61d189c31ea8c5::t_fb1155c86881c6 9-26
+assets/themes/japan/theme.json
+  s_61d189c31ea8c5::t_b4ac0f92f2fab1 9-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "203ec261c0a66ea57a6e74b4dc879ce19a53b8da",
+  "prompts": {},
+  "sessions": {
+    "s_61d189c31ea8c5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e192d-da87-7a23-a27d-cf3ad066e4df",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Parris Digital <parrisdigital@gmail.com>"
+    }
+  }
+}
