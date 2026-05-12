@@ -135,6 +135,22 @@ async function main() {
     })();
   })`);
 
+    const releaseUi = await evaluate(`(() => {
+      const open = document.getElementById('about-open');
+      const modal = document.getElementById('about-modal');
+      if (!open || !modal) return { ok: false };
+      open.click();
+      const links = Array.from(modal.querySelectorAll('a')).map(a => a.href);
+      const visible = !modal.hidden;
+      document.getElementById('about-close')?.click();
+      return {
+        ok: visible &&
+          links.some(href => href.includes('jasonkneen/tiny-world-builder')) &&
+          links.some(href => href.includes('parrisdigital/adventure-world-builder')),
+      };
+    })()`);
+    if (!releaseUi.ok) throw new Error('Credits/About modal did not expose source attribution');
+
     const baseMarkers = {
       playerSpawn: { x: 0, z: 7 },
       villainSpawn: { x: 5, z: 3 },
@@ -286,6 +302,7 @@ async function main() {
     cdp.ws.close();
     console.log(JSON.stringify({
       ok: true,
+      releaseUi,
       defeat,
       npcLine,
       collect,

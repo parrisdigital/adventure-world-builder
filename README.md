@@ -73,11 +73,16 @@ http://localhost:8000/tiny-world-builder.html
 
 This app can be deployed as a static site. On Vercel, import this GitHub repository and use the default static deployment flow.
 
-Recommended next deployment cleanup:
+The included `vercel.json` rewrites:
 
-- Add an `index.html` entrypoint or a `vercel.json` rewrite from `/` to `/tiny-world-builder.html`.
+- `/` to `/tiny-world-builder.html`
+- `/app` to `/tiny-world-builder.html`
+
+Deployment notes:
+
 - Keep a visible source link in the deployed app.
 - Keep this repository public if deploying a modified AGPL-derived version.
+- Keep `NOTICE.md` in the public source repository so attribution and license notes are easy to find.
 
 ## Controls
 
@@ -135,6 +140,7 @@ npm run smoke:play
 The smoke test starts a temporary static server and headless Chrome session, then verifies:
 
 - Play Mode hooks load
+- in-app credits/source attribution opens from the toolbar
 - `gameLayer` markers can be set
 - Play Mode starts from explicit markers
 - `defeat_villain`, `collect_relic`, `unlock_gate`, and `escape` objectives complete
@@ -165,6 +171,8 @@ Because this project is based on an AGPL-licensed work, public hosted modified v
 License metadata note: the upstream repository has had a root AGPL license while package metadata may indicate a different license. Treat the root `LICENSE` as authoritative. This fork aligns its package metadata to `AGPL-3.0-only`.
 
 ## Credits
+
+See [NOTICE.md](./NOTICE.md) for standalone attribution and license notes.
 
 Original project:
 

@@ -31,3 +31,5 @@ Current prompt: Add Adventure UX and objective gameplay polish: Adventure Panel,
 - Made objective objects reactive: chests open after relic collection, gates open after unlocking, exits only surface for escape objectives, and NPC markers can surface a short quest line.
 - Expanded `npm run smoke:play` to cover all four objective types, NPC dialogue, and export/import preservation for `gameLayer`.
 - Updated `world.schema.json`, the embedded `WORLD_SCHEMA`, and README documentation for `gameLayer`, adventure markers, objective gameplay, `soft` camera mode, and AGPL/package metadata alignment.
+- Committed the Adventure UX checkpoint as `6a092f7`.
+- Added Vercel rewrites for `/` and `/app`, an in-app Credits and License modal, and standalone `NOTICE.md` attribution/license notes for release readiness.
