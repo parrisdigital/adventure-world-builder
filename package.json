@@ -1,7 +1,7 @@
 {
   "name": "adventure-world-builder",
   "version": "1.0.0",
-  "description": "An AGPL open-source expansion of Tiny World Builder with adventure authoring, Play Mode, objectives, and local villain gameplay.",
+  "description": "An AGPL open-source Parris Digital expansion of Tiny World Builder with adventure authoring, Play Mode, objectives, and local villain gameplay.",
   "main": "index.js",
   "scripts": {
     "db:generate": "drizzle-kit generate",
@@ -14,7 +14,7 @@
     "url": "git+https://github.com/parrisdigital/adventure-world-builder.git"
   },
   "keywords": [],
-  "author": "",
+  "author": "Parris Digital",
   "license": "AGPL-3.0-only",
   "bugs": {
     "url": "https://github.com/parrisdigital/adventure-world-builder/issues"

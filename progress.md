@@ -33,3 +33,4 @@ Current prompt: Add Adventure UX and objective gameplay polish: Adventure Panel,
 - Updated `world.schema.json`, the embedded `WORLD_SCHEMA`, and README documentation for `gameLayer`, adventure markers, objective gameplay, `soft` camera mode, and AGPL/package metadata alignment.
 - Committed the Adventure UX checkpoint as `6a092f7`.
 - Added Vercel rewrites for `/` and `/app`, an in-app Credits and License modal, and standalone `NOTICE.md` attribution/license notes for release readiness.
+- Corrected authorship language so Adventure World Builder is presented as a Parris Digital project while crediting Tiny World Builder/Jason Kneen as the original upstream foundation.

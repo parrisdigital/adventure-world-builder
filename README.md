@@ -1,10 +1,10 @@
 # Adventure World Builder
 
-Adventure World Builder is an open-source, browser-based voxel world editor and playable adventure prototype.
+Adventure World Builder is an open-source, browser-based voxel world editor and playable adventure prototype by Parris Digital.
 
-It is based on [Tiny World Builder](https://github.com/jasonkneen/tiny-world-builder) by [Jason Kneen](https://github.com/jasonkneen). This project keeps the original world-building foundation and expands it with Play Mode, adventure markers, objectives, villains, and local gameplay systems.
+It builds on the world-building foundation of [Tiny World Builder](https://github.com/jasonkneen/tiny-world-builder) by [Jason Kneen](https://github.com/jasonkneen), expanding that foundation with Play Mode, adventure markers, objectives, villains, and local gameplay systems.
 
-> Attribution matters: this repository is a fork and continuation of Tiny World Builder. The original concept, visual foundation, and much of the single-file Three.js editor architecture come from Jason Kneen's work.
+> Attribution matters: Adventure World Builder is authored and maintained by Parris Digital. The original concept, visual foundation, and much of the single-file Three.js editor architecture come from Jason Kneen's Tiny World Builder.
 
 ![Adventure World Builder screenshot](https://github.com/user-attachments/assets/1b19a5f7-def5-42bf-b85f-01714f502afa)
 
@@ -179,7 +179,7 @@ Original project:
 - [Tiny World Builder](https://github.com/jasonkneen/tiny-world-builder)
 - Created by [Jason Kneen](https://github.com/jasonkneen)
 
-This fork:
+Adventure World Builder:
 
 - [Adventure World Builder](https://github.com/parrisdigital/adventure-world-builder)
-- Expanded by [parrisdigital](https://github.com/parrisdigital)
+- Created and maintained by [Parris Digital](https://github.com/parrisdigital)

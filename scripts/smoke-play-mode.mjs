@@ -141,10 +141,12 @@ async function main() {
       if (!open || !modal) return { ok: false };
       open.click();
       const links = Array.from(modal.querySelectorAll('a')).map(a => a.href);
+      const text = modal.textContent || '';
       const visible = !modal.hidden;
       document.getElementById('about-close')?.click();
       return {
         ok: visible &&
+          text.includes('Parris Digital') &&
           links.some(href => href.includes('jasonkneen/tiny-world-builder')) &&
           links.some(href => href.includes('parrisdigital/adventure-world-builder')),
       };
