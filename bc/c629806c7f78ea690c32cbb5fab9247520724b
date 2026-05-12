@@ -1,0 +1,31 @@
+progress.md
+  s_61d189c31ea8c5::t_c84a282075e104 36
+README.md
+  s_61d189c31ea8c5::t_3f5145165f14c0 3,5,7,182,185
+package-lock.json
+  ai_agent 10
+NOTICE.md
+  s_61d189c31ea8c5::t_9b9d4e80fdb43b 3,5,11,13,16,21
+tiny-world-builder.html
+  s_61d189c31ea8c5::t_367b8c49f46c78 1298
+package.json
+  s_61d189c31ea8c5::t_9eadb33abe65ea 4,17
+scripts/smoke-play-mode.mjs
+  s_61d189c31ea8c5::t_280535ff5f03dc 144,149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "bcc629806c7f78ea690c32cbb5fab9247520724b",
+  "prompts": {},
+  "sessions": {
+    "s_61d189c31ea8c5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e192d-da87-7a23-a27d-cf3ad066e4df",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Parris Digital <parrisdigital@gmail.com>"
+    }
+  }
+}
