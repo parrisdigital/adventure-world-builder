@@ -135,47 +135,142 @@ async function main() {
     })();
   })`);
 
-    const entered = await evaluate(`(() => {
-    const welcome = document.getElementById('welcome-modal');
-    if (welcome) welcome.hidden = true;
-    window.__tinyworldGameLayer.clear();
-    window.__tinyworldGameLayer.setObjective('defeat_villain');
-    window.__tinyworldGameLayer.setMarker('playerSpawn', 0, 7);
-    window.__tinyworldGameLayer.setMarker('villainSpawn', 5, 3);
-    const ok = window.__tinyworldPlay.enter();
-    return { ok, state: JSON.parse(window.render_game_to_text()) };
-  })()`);
-    if (!entered.ok || entered.state.mode !== 'play') throw new Error('Play Mode did not start');
+    const baseMarkers = {
+      playerSpawn: { x: 0, z: 7 },
+      villainSpawn: { x: 5, z: 3 },
+    };
+    const objectiveMarkers = {
+      chest: { x: 3, z: 7 },
+      gate: { x: 4, z: 5 },
+      exit: { x: 3, z: 0 },
+      npc: { x: 4, z: 6 },
+    };
 
-    const won = await evaluate(`(() => {
-    const play = window.__tinyworldPlay.state();
-    play.player.x = play.villain.x;
-    play.player.z = Math.max(0, play.villain.z - 0.6);
-    for (let i = 0; i < 4; i++) {
-      window.__tinyworldPlay.attack();
-      window.advanceTime(420);
+    async function startScenario(objective, markers) {
+      return evaluate(`(() => {
+      const welcome = document.getElementById('welcome-modal');
+      if (welcome) welcome.hidden = true;
+      window.__tinyworldPlay.exit({ silent: true, restoreCamera: false });
+      window.__tinyworldGameLayer.clear();
+      window.__tinyworldGameLayer.setObjective(${JSON.stringify(objective)});
+      const markers = ${JSON.stringify(markers)};
+      const placed = Object.entries(markers).map(([type, marker]) => ({
+        type,
+        ok: window.__tinyworldGameLayer.setMarker(type, marker.x, marker.z),
+      }));
+      const validation = window.__tinyworldGameLayer.validate();
+      const ok = validation.ok && window.__tinyworldPlay.enter();
+      return { ok, placed, validation, state: JSON.parse(window.render_game_to_text()) };
+    })()`);
     }
-    return JSON.parse(window.render_game_to_text());
-  })()`);
-    if (won.result !== 'won') throw new Error('Defeat objective did not complete');
 
-    const exited = await evaluate(`(() => {
-    window.__tinyworldPlay.exit();
-    return JSON.parse(window.render_game_to_text());
-  })()`);
-    if (exited.mode !== 'editor' || exited.player !== null || exited.villain !== null) {
-      throw new Error('Play Mode did not exit cleanly');
+    const defeatEntered = await startScenario('defeat_villain', baseMarkers);
+    if (!defeatEntered.ok || defeatEntered.state.mode !== 'play') {
+      throw new Error('Defeat scenario did not start: ' + JSON.stringify(defeatEntered));
     }
+    const defeat = await evaluate(`(() => {
+      const play = window.__tinyworldPlay.state();
+      play.player.x = play.villain.x;
+      play.player.z = Math.max(0, play.villain.z - 0.6);
+      for (let i = 0; i < 4; i++) {
+        window.__tinyworldPlay.attack();
+        window.advanceTime(420);
+      }
+      return JSON.parse(window.render_game_to_text());
+    })()`);
+    if (defeat.result !== 'won') throw new Error('Defeat objective did not complete');
+
+    const collectEntered = await startScenario('collect_relic', {
+      ...baseMarkers,
+      chest: objectiveMarkers.chest,
+      npc: objectiveMarkers.npc,
+    });
+    if (!collectEntered.ok) throw new Error('Collect scenario did not start: ' + JSON.stringify(collectEntered));
+    const npcLine = await evaluate(`(() => {
+      const play = window.__tinyworldPlay.state();
+      play.player.x = 4;
+      play.player.z = 6;
+      window.advanceTime(120);
+      return JSON.parse(window.render_game_to_text()).npcLine;
+    })()`);
+    if (!npcLine.includes('Villager:')) throw new Error('NPC marker did not surface dialogue');
+    const collect = await evaluate(`(() => {
+      const play = window.__tinyworldPlay.state();
+      play.player.x = 3;
+      play.player.z = 7;
+      window.advanceTime(120);
+      return JSON.parse(window.render_game_to_text());
+    })()`);
+    if (collect.result !== 'won' || !collect.collectedRelic) throw new Error('Collect objective did not complete');
+
+    const unlockEntered = await startScenario('unlock_gate', {
+      ...baseMarkers,
+      chest: objectiveMarkers.chest,
+      gate: objectiveMarkers.gate,
+    });
+    if (!unlockEntered.ok) throw new Error('Unlock scenario did not start: ' + JSON.stringify(unlockEntered));
+    const unlock = await evaluate(`(() => {
+      const play = window.__tinyworldPlay.state();
+      play.player.x = 3;
+      play.player.z = 7;
+      window.advanceTime(120);
+      play.player.x = 4;
+      play.player.z = 5;
+      window.advanceTime(120);
+      return JSON.parse(window.render_game_to_text());
+    })()`);
+    if (unlock.result !== 'won' || !unlock.collectedRelic || !unlock.gateUnlocked) {
+      throw new Error('Unlock objective did not complete');
+    }
+
+    const escapeEntered = await startScenario('escape', {
+      ...baseMarkers,
+      exit: objectiveMarkers.exit,
+    });
+    if (!escapeEntered.ok) throw new Error('Escape scenario did not start: ' + JSON.stringify(escapeEntered));
+    const escape = await evaluate(`(() => {
+      const play = window.__tinyworldPlay.state();
+      play.player.x = 3;
+      play.player.z = 0;
+      window.advanceTime(120);
+      return JSON.parse(window.render_game_to_text());
+    })()`);
+    if (escape.result !== 'won') throw new Error('Escape objective did not complete');
 
     const validation = await evaluate(`(() => {
-    window.__tinyworldGameLayer.clear();
-    window.__tinyworldGameLayer.setObjective('unlock_gate');
-    window.__tinyworldGameLayer.setMarker('playerSpawn', 0, 7);
-    window.__tinyworldGameLayer.setMarker('villainSpawn', 5, 3);
-    return window.__tinyworldGameLayer.validate();
-  })()`);
+      window.__tinyworldPlay.exit({ silent: true, restoreCamera: false });
+      window.__tinyworldGameLayer.clear();
+      window.__tinyworldGameLayer.setObjective('unlock_gate');
+      window.__tinyworldGameLayer.setMarker('playerSpawn', 0, 7);
+      window.__tinyworldGameLayer.setMarker('villainSpawn', 5, 3);
+      return window.__tinyworldGameLayer.validate();
+    })()`);
     if (validation.ok || !validation.errors.some(e => e.includes('Chest')) || !validation.errors.some(e => e.includes('Gate'))) {
       throw new Error('Unlock objective validation did not require chest and gate markers');
+    }
+
+    const preserved = await evaluate(`(() => {
+      window.__tinyworldPlay.exit({ silent: true, restoreCamera: false });
+      window.__tinyworldGameLayer.clear();
+      window.__tinyworldGameLayer.setObjective('escape');
+      window.__tinyworldGameLayer.setMarker('playerSpawn', 0, 7);
+      window.__tinyworldGameLayer.setMarker('villainSpawn', 5, 3);
+      window.__tinyworldGameLayer.setMarker('exit', 3, 0);
+      window.__tinyworldGameLayer.setMarker('npc', 4, 6);
+      const before = window.__tinyworldGameLayer.state();
+      const ok = typeof window.applyState === 'function' && window.applyState({
+        v: 5,
+        gridSize: 8,
+        cells: [],
+        gameLayer: before,
+      });
+      const after = window.__tinyworldGameLayer.state();
+      return { ok, before, after, validation: window.__tinyworldGameLayer.validate() };
+    })()`);
+    if (!preserved.ok ||
+        JSON.stringify(preserved.before) !== JSON.stringify(preserved.after) ||
+        !preserved.validation.ok) {
+      throw new Error('Export/import did not preserve gameLayer: ' + JSON.stringify(preserved));
     }
 
     const shot = await cdp.send('Page.captureScreenshot', { format: 'png' });
@@ -191,10 +286,13 @@ async function main() {
     cdp.ws.close();
     console.log(JSON.stringify({
       ok: true,
-      entered: entered.state,
-      won,
-      exited,
+      defeat,
+      npcLine,
+      collect,
+      unlock,
+      escape,
       validation,
+      preserved,
       screenshot: screenshotPath,
     }, null, 2));
   } finally {

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-<title>Tiny World Builder</title>
+<title>Adventure World Builder</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -96,7 +96,7 @@
     font-family: 'Fraunces', Georgia, serif;
     font-weight: 500;
     font-size: 28px;
-    letter-spacing: -0.02em;
+    letter-spacing: 0;
     line-height: 1;
   }
   .brand .title em {
@@ -108,7 +108,7 @@
     font-size: 12px;
     color: var(--muted);
     margin-top: 6px;
-    letter-spacing: 0.02em;
+    letter-spacing: 0;
   }
 
   .controls {
@@ -452,11 +452,126 @@
   body.play-mode .toolbar,
   body.play-mode .flyout,
   body.play-mode .help,
+  body.play-mode .adventure-panel,
   body.play-mode .unsaved-banner {
     opacity: 0;
     pointer-events: none;
   }
   body.play-mode canvas { cursor: default; }
+
+  .adventure-panel {
+    position: fixed;
+    top: 88px;
+    left: 28px;
+    z-index: 12;
+    width: min(326px, calc(100vw - 56px));
+    background: rgba(255, 255, 255, 0.86);
+    border: 1px solid rgba(235, 227, 210, 0.96);
+    border-radius: 14px;
+    padding: 12px;
+    box-shadow: 0 14px 38px -24px rgba(50, 35, 10, 0.42);
+    backdrop-filter: blur(6px);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: opacity 0.18s ease;
+  }
+  .adventure-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .adventure-title {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 17px;
+    line-height: 1.08;
+    font-weight: 500;
+  }
+  .adventure-status {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+    text-align: right;
+  }
+  .adventure-select {
+    display: grid;
+    gap: 5px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .adventure-select select {
+    width: 100%;
+    height: 34px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: rgba(255,255,255,0.9);
+    color: var(--ink);
+    font: inherit;
+    font-size: 12px;
+    padding: 0 10px;
+  }
+  .adventure-marker-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .adventure-marker {
+    min-height: 28px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: rgba(250, 246, 237, 0.78);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 7px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .adventure-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: #d8cbb1;
+    box-shadow: 0 0 0 2px rgba(216, 203, 177, 0.22);
+    flex: 0 0 auto;
+  }
+  .adventure-marker.ok {
+    color: #426c3c;
+    border-color: rgba(104, 148, 74, 0.42);
+  }
+  .adventure-marker.ok .adventure-dot {
+    background: #5b9c4a;
+    box-shadow: 0 0 0 2px rgba(91, 156, 74, 0.16);
+  }
+  .adventure-marker.missing,
+  .adventure-marker.error {
+    color: #9b4b3e;
+    border-color: rgba(184, 72, 56, 0.34);
+  }
+  .adventure-marker.missing .adventure-dot,
+  .adventure-marker.error .adventure-dot {
+    background: #b84838;
+    box-shadow: 0 0 0 2px rgba(184, 72, 56, 0.14);
+  }
+  .adventure-errors {
+    display: grid;
+    gap: 5px;
+    color: #8c4a37;
+    font-size: 11px;
+    line-height: 1.35;
+  }
+  .adventure-errors:empty { display: none; }
+  .adventure-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .adventure-actions .btn {
+    flex: 1 1 auto;
+    padding: 8px 10px;
+  }
 
   .play-hud {
     position: fixed;
@@ -1046,6 +1161,7 @@
     .help { display: none; }
     .controls { top: 20px; right: 20px; }
     .brand { top: 20px; left: 20px; }
+    .adventure-panel,
     .play-hud { top: 78px; left: 20px; width: calc(100vw - 40px); }
     .toolbar { bottom: 16px; padding: 6px; gap: 2px; }
     .tool { width: 60px; height: 70px; font-size: 10px; padding: 3px 2px; }
@@ -1068,8 +1184,8 @@
   <div id="cloud-layer"></div>
 
   <div class="brand">
-    <div class="title">Tiny World <em>Builder</em></div>
-    <div class="sub">Tap to place · drag to orbit · pinch or scroll to zoom</div>
+    <div class="title">Adventure World <em>Builder</em></div>
+    <div class="sub">Expanded from Tiny World Builder · tap to place</div>
   </div>
 
   <div class="unsaved-banner" id="unsaved-banner" hidden>
@@ -1097,7 +1213,7 @@
   </div>
 
   <div class="controls">
-    <a class="btn icon" id="github-link" href="https://github.com/jasonkneen/tiny-world-builder" target="_blank" rel="noopener noreferrer" data-tooltip="View on GitHub" aria-label="View Tiny World Builder on GitHub">
+    <a class="btn icon" id="github-link" href="https://github.com/parrisdigital/adventure-world-builder" target="_blank" rel="noopener noreferrer" data-tooltip="View on GitHub" aria-label="View Adventure World Builder on GitHub">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5a13.4 13.4 0 0 0-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.4 5.4 0 0 0 4 9c0 3.5 3 5.5 6 5.5a4.8 4.8 0 0 0-1 3.5v4"/><path d="M9 18c-4.5 2-5-2-7-2"/></svg>
     </a>
     <button class="btn icon" id="persp" data-tooltip="Perspective" aria-label="Toggle camera mode">
@@ -1230,7 +1346,7 @@
 
   <div id="auth-modal" class="auth-modal" hidden>
     <div class="auth-card">
-      <div class="auth-title">Tiny World <em>Builder</em></div>
+      <div class="auth-title">Adventure World <em>Builder</em></div>
       <div class="auth-subtitle">Sign in to start building</div>
       <div id="auth-error" class="auth-error" hidden></div>
       <div id="auth-success" class="auth-success" hidden></div>
@@ -1324,7 +1440,7 @@
   <div id="welcome-modal" class="modal" hidden>
     <form class="modal-card welcome-card" role="dialog" aria-labelledby="welcome-title" onsubmit="return false">
       <div class="modal-head">
-        <strong id="welcome-title" class="welcome-title">Tiny World <em>Builder</em></strong>
+        <strong id="welcome-title" class="welcome-title">Adventure World <em>Builder</em></strong>
         <button class="modal-close" id="welcome-close" title="Close" aria-label="Close welcome dialog">×</button>
       </div>
       <p class="welcome-copy">Build a little voxel world by painting terrain, dropping houses, drawing fences, planting crops, and shaping paths.</p>
@@ -1346,7 +1462,7 @@
   <div id="gen-modal" class="modal" hidden>
     <form class="modal-card" role="dialog" aria-labelledby="gen-title" onsubmit="return false">
       <div class="modal-head">
-        <strong id="gen-title">Generate Tiny World</strong>
+        <strong id="gen-title">Generate Adventure World</strong>
         <button class="modal-close" id="gen-close" title="Close">×</button>
       </div>
       <label>Prompt
@@ -1506,6 +1622,27 @@
     Tools: <kbd>1-9</kbd> + letters · <kbd>E</kbd> erase · Right-drag / <kbd>Space</kbd> drag pan · <kbd>P</kbd> perspective
   </div>
 
+  <div class="adventure-panel" id="adventure-panel">
+    <div class="adventure-head">
+      <div class="adventure-title">Adventure</div>
+      <div class="adventure-status" id="adventure-status">Needs markers</div>
+    </div>
+    <label class="adventure-select">
+      Objective
+      <select id="adventure-objective-select">
+        <option value="defeat_villain">Defeat villain</option>
+        <option value="collect_relic">Collect relic</option>
+        <option value="unlock_gate">Unlock gate</option>
+        <option value="escape">Escape</option>
+      </select>
+    </label>
+    <div class="adventure-marker-list" id="adventure-required"></div>
+    <div class="adventure-errors" id="adventure-errors"></div>
+    <div class="adventure-actions">
+      <button class="btn" id="adventure-play" type="button">Play Adventure</button>
+    </div>
+  </div>
+
   <div class="play-hud" id="play-hud" hidden>
     <div class="play-head">
       <div>
@@ -1544,7 +1681,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
   /* =====================================================================
-     Tiny World Builder — single-file Three.js scene + tile editor
+     Adventure World Builder - expanded from Tiny World Builder.
+     Single-file Three.js scene, editor, and local adventure runtime.
      ===================================================================== */
 
   // -------- constants --------
@@ -4201,9 +4339,31 @@
   const gameLayerGroup = new THREE.Group();
   gameLayerGroup.name = 'gameLayer';
   scene.add(gameLayerGroup);
+  const adventurePanel = {
+    root: document.getElementById('adventure-panel'),
+    status: document.getElementById('adventure-status'),
+    objective: document.getElementById('adventure-objective-select'),
+    required: document.getElementById('adventure-required'),
+    errors: document.getElementById('adventure-errors'),
+    play: document.getElementById('adventure-play'),
+    feedback: '',
+  };
 
   function normalizeGameObjective(value) {
     return GAME_OBJECTIVES.includes(value) ? value : 'defeat_villain';
+  }
+
+  function requiredGameMarkersForObjective(objective) {
+    const normalized = normalizeGameObjective(objective);
+    const required = ['playerSpawn', 'villainSpawn'];
+    if (normalized === 'collect_relic' || normalized === 'unlock_gate') required.push('chest');
+    if (normalized === 'unlock_gate') required.push('gate');
+    if (normalized === 'escape') required.push('exit');
+    return required;
+  }
+
+  function gameMarkerLabel(type) {
+    return (GAME_MARKER_DEFS[type] && GAME_MARKER_DEFS[type].label) || 'Marker';
   }
 
   function normalizeGameMarker(type, marker) {
@@ -4236,10 +4396,84 @@
     return { objective: normalizeGameObjective(gameLayer.objective), markers };
   }
 
-  function makeGameMarkerMesh(type) {
+  function currentPlayState() {
+    try {
+      return playMode || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function playMarkerRenderState(type) {
+    const pm = currentPlayState();
+    if (!pm || !pm.active) {
+      return { hidden: false, label: true, active: true, collected: false, unlocked: false };
+    }
+    const objective = normalizeGameObjective(pm.objective || gameLayer.objective);
+    const state = { hidden: true, label: false, active: false, collected: false, unlocked: false };
+    if (type === 'chest' && (objective === 'collect_relic' || objective === 'unlock_gate')) {
+      state.hidden = false;
+      state.collected = !!pm.collectedRelic;
+      state.active = !pm.collectedRelic;
+    } else if (type === 'gate' && objective === 'unlock_gate') {
+      state.hidden = false;
+      state.unlocked = !!pm.gateUnlocked;
+      state.active = !!pm.collectedRelic && !pm.gateUnlocked;
+    } else if (type === 'exit' && objective === 'escape') {
+      state.hidden = false;
+      state.active = true;
+    } else if (type === 'npc') {
+      state.hidden = false;
+      state.active = false;
+    }
+    return state;
+  }
+
+  function makeMarkerLabelSprite(type) {
+    const label = gameMarkerLabel(type);
+    const canvas = document.createElement('canvas');
+    canvas.width = 160;
+    canvas.height = 42;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'rgba(255,255,255,0.88)';
+    ctx.strokeStyle = 'rgba(80,55,20,0.16)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(8, 6, 144, 30, 9);
+    } else {
+      ctx.rect(8, 6, 144, 30);
+    }
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#4f463a';
+    ctx.font = '600 17px Inter, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, 80, 22);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.userData = texture.userData || {};
+    texture.userData.disposeWithGroup = true;
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false });
+    material.userData = material.userData || {};
+    material.userData.disposeWithGroup = true;
+    const sprite = new THREE.Sprite(material);
+    sprite.name = 'markerLabel:' + type;
+    sprite.position.y = 0.68;
+    sprite.scale.set(0.72, 0.19, 1);
+    return sprite;
+  }
+
+  function makeGameMarkerMesh(type, opts) {
+    opts = opts || {};
+    const state = opts.state || {};
     const def = GAME_MARKER_DEFS[type] || GAME_MARKER_DEFS.questPoint;
     const g = new THREE.Group();
     g.name = 'gameMarker:' + type;
+    g.userData.tooltip = gameMarkerLabel(type);
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.33, 0.018, 6, 28), M.markerRing);
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = 0.018;
@@ -4261,10 +4495,15 @@
       const base = new THREE.Mesh(roundedBox(0.32, 0.18, 0.24, 0.035), M.bridgeWood);
       base.position.y = 0.12;
       const lid = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.08, 0.26), def.material);
-      lid.position.y = 0.25;
+      lid.position.y = state.collected ? 0.31 : 0.25;
+      lid.position.z = state.collected ? 0.12 : 0;
+      lid.rotation.x = state.collected ? -0.85 : 0;
       const latch = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 0.035), M.knob);
       latch.position.set(0, 0.18, -0.14);
-      g.add(base, lid, latch);
+      const glow = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), M.knob);
+      glow.position.set(0, 0.25, 0);
+      glow.visible = !state.collected;
+      g.add(base, lid, latch, glow);
     } else if (type === 'gate') {
       const left = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.46, 0.07), def.material);
       const right = left.clone();
@@ -4272,7 +4511,16 @@
       right.position.set(0.18, 0.24, 0);
       const top = new THREE.Mesh(new THREE.BoxGeometry(0.43, 0.07, 0.07), def.material);
       top.position.y = 0.45;
-      g.add(left, right, top);
+      const doorLeft = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.28, 0.035), M.bridgeWood);
+      const doorRight = doorLeft.clone();
+      doorLeft.position.set(state.unlocked ? -0.23 : -0.08, 0.20, state.unlocked ? 0.08 : 0);
+      doorRight.position.set(state.unlocked ? 0.23 : 0.08, 0.20, state.unlocked ? 0.08 : 0);
+      doorLeft.rotation.y = state.unlocked ? -0.75 : 0;
+      doorRight.rotation.y = state.unlocked ? 0.75 : 0;
+      const lock = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.07, 0.045), M.knob);
+      lock.position.set(0, 0.22, -0.04);
+      lock.visible = !state.unlocked;
+      g.add(left, right, top, doorLeft, doorRight, lock);
     } else if (type === 'npc') {
       const body = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.30, 8), def.material);
       body.position.y = 0.18;
@@ -4293,6 +4541,8 @@
       g.add(star);
     }
 
+    if (state.active === false) g.scale.setScalar(0.88);
+    if (opts.label !== false && state.label !== false) g.add(makeMarkerLabelSprite(type));
     g.traverse(o => {
       if (!o.isMesh) return;
       o.castShadow = false;
@@ -4310,8 +4560,10 @@
     for (const type of GAME_MARKER_TYPES) {
       const marker = gameLayer.markers[type];
       if (!marker || marker.x < 0 || marker.x >= GRID || marker.z < 0 || marker.z >= GRID) continue;
+      const state = playMarkerRenderState(type);
+      if (state.hidden) continue;
       const p = tilePos(marker.x, marker.z);
-      const mesh = makeGameMarkerMesh(type);
+      const mesh = makeGameMarkerMesh(type, { state });
       mesh.userData.kind = 'gameMarker';
       mesh.userData.markerType = type;
       mesh.userData.gx = marker.x;
@@ -4326,6 +4578,7 @@
     gameLayer.objective = normalized.objective;
     gameLayer.markers = normalized.markers;
     renderGameLayer();
+    updateAdventurePanel();
     if (!(opts && opts.skipSave)) saveState();
   }
 
@@ -4333,11 +4586,14 @@
     gameLayer.objective = 'defeat_villain';
     gameLayer.markers = {};
     renderGameLayer();
+    updateAdventurePanel();
     if (!(opts && opts.skipSave)) saveState();
   }
 
   function setGameObjective(objective, opts) {
     gameLayer.objective = normalizeGameObjective(objective);
+    adventurePanel.feedback = '';
+    updateAdventurePanel();
     if (!(opts && opts.skipSave)) saveState();
   }
 
@@ -4345,8 +4601,15 @@
     if (!GAME_MARKER_TYPES.includes(type)) return false;
     const marker = normalizeGameMarker(type, { x, z });
     if (!marker || marker.x >= GRID || marker.z >= GRID) return false;
+    if (!(opts && opts.allowBlocked) && typeof playCanStandAt === 'function' && !playCanStandAt(marker.x, marker.z)) {
+      adventurePanel.feedback = 'Markers need walkable tiles.';
+      updateAdventurePanel();
+      return false;
+    }
+    adventurePanel.feedback = '';
     gameLayer.markers[type] = marker;
     renderGameLayer();
+    updateAdventurePanel();
     if (!(opts && opts.skipSave)) saveState();
     return true;
   }
@@ -4357,6 +4620,8 @@
       if (marker && marker.x === x && marker.z === z) {
         delete gameLayer.markers[type];
         renderGameLayer();
+        adventurePanel.feedback = '';
+        updateAdventurePanel();
         if (!(opts && opts.skipSave)) saveState();
         return true;
       }
@@ -5906,9 +6171,14 @@
     opacityRoots.delete(group);
     group.traverse(o => {
       safeDisposeGeometry(o.geometry);
-      // Materials are shared (M.* and the fadeMatCache buckets), so we never
-      // dispose them here — same contract as before, just enforced via the
-      // cachedFade flag now that prepareFadeable no longer clones.
+      // Shared materials stay alive; marker labels tag their own texture-backed
+      // materials so the gameLayer can rebuild cleanly.
+      const mats = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+      mats.forEach(mat => {
+        if (!mat || !mat.userData || !mat.userData.disposeWithGroup) return;
+        if (mat.map && mat.map.userData && mat.map.userData.disposeWithGroup) mat.map.dispose();
+        mat.dispose();
+      });
     });
   }
 
@@ -6061,7 +6331,7 @@
     if (!tool || tool.erase || tool.auto) return null;
     const kind = tool.kind;
     let mesh = null;
-    if      (tool.gameMarker)      mesh = makeGameMarkerMesh(tool.gameMarker);
+    if      (tool.gameMarker)      mesh = makeGameMarkerMesh(tool.gameMarker, { label: false });
     else if (kind === 'tree')      mesh = makeTree();
     else if (kind === 'rock')      mesh = makeRock({ n: false, s: false, e: false, w: false }, 1, 0, 0);
     else if (kind === 'tuft')      mesh = makeTuft();
@@ -6292,7 +6562,7 @@
   }
 
   function makeThumbObject(tool) {
-    if (tool.gameMarker) return makeGameMarkerMesh(tool.gameMarker);
+    if (tool.gameMarker) return makeGameMarkerMesh(tool.gameMarker, { label: false, thumbnail: true });
     const k = tool.kind;
     if (!k) return null;
     if (k === 'tree')      return makeTree();
@@ -6621,12 +6891,14 @@
       return;
     }
     if (selectedTool.gameMarker) {
-      if (typeof playSfxForTool === 'function') playSfxForTool(selectedTool);
+      let previousObjective = gameLayer.objective;
       if (selectedTool.gameMarker === 'questPoint') {
         const variant = selectedTool.activeVariant;
         if (variant && variant.objective) setGameObjective(variant.objective, { skipSave: true });
       }
-      setGameMarker(selectedTool.gameMarker, x, z);
+      const placed = setGameMarker(selectedTool.gameMarker, x, z);
+      if (!placed && previousObjective !== gameLayer.objective) setGameObjective(previousObjective, { skipSave: true });
+      if (placed && typeof playSfxForTool === 'function') playSfxForTool(selectedTool);
       return;
     }
     // Audible feedback for any user-initiated placement / erase. The
@@ -7038,7 +7310,7 @@
     const ts   = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'tinyworld-' + ts + '.json';
+    a.download = 'adventure-world-' + ts + '.json';
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -7057,7 +7329,7 @@
       if (!applyState(data)) throw new Error('schema check failed');
     } catch (err) {
       console.error('Import failed:', err);
-      alert('Could not import that file — not a valid Tiny World JSON.');
+      alert('Could not import that file — not a valid Adventure World JSON.');
     }
     e.target.value = '';
   });
@@ -7343,6 +7615,7 @@
     objectiveStatus: '',
     collectedRelic: false,
     gateUnlocked: false,
+    npcLine: '',
     markers: {},
     cameraBackup: null,
     player: null,
@@ -7475,11 +7748,7 @@
   }
 
   function playRequiredMarkers(objective) {
-    const required = ['playerSpawn', 'villainSpawn'];
-    if (objective === 'collect_relic' || objective === 'unlock_gate') required.push('chest');
-    if (objective === 'unlock_gate') required.push('gate');
-    if (objective === 'escape') required.push('exit');
-    return required;
+    return requiredGameMarkersForObjective(objective);
   }
 
   function clonePlayMarkers() {
@@ -7514,6 +7783,48 @@
       errors.push('Spawn and Villain markers need separate tiles.');
     }
     return { ok: errors.length === 0, errors, objective, markers };
+  }
+
+  function updateAdventurePanel() {
+    if (!adventurePanel.root) return;
+    const objective = normalizeGameObjective(gameLayer.objective);
+    if (adventurePanel.objective && adventurePanel.objective.value !== objective) {
+      adventurePanel.objective.value = objective;
+    }
+    const required = playRequiredMarkers(objective);
+    const validation = validateGameLayerForPlay();
+    if (adventurePanel.status) {
+      adventurePanel.status.textContent = validation.ok ? 'Ready to play' : 'Needs markers';
+    }
+    if (adventurePanel.required) {
+      adventurePanel.required.innerHTML = '';
+      required.forEach(type => {
+        const marker = gameLayer.markers[type];
+        const blocked = marker && !playCanStandAt(marker.x, marker.z);
+        const item = document.createElement('div');
+        item.className = 'adventure-marker ' + (!marker || blocked ? (blocked ? 'error' : 'missing') : 'ok');
+        item.title = marker ? gameMarkerLabel(type) + ' at ' + marker.x + ',' + marker.z : gameMarkerLabel(type) + ' marker required';
+        const dot = document.createElement('span');
+        dot.className = 'adventure-dot';
+        const label = document.createElement('span');
+        label.textContent = marker ? gameMarkerLabel(type) + ' ' + marker.x + ',' + marker.z : gameMarkerLabel(type);
+        item.append(dot, label);
+        adventurePanel.required.appendChild(item);
+      });
+    }
+    if (adventurePanel.errors) {
+      adventurePanel.errors.innerHTML = '';
+      const messages = adventurePanel.feedback ? [adventurePanel.feedback].concat(validation.errors) : validation.errors;
+      messages.slice(0, 4).forEach(message => {
+        const line = document.createElement('div');
+        line.textContent = message;
+        adventurePanel.errors.appendChild(line);
+      });
+    }
+    if (adventurePanel.play) {
+      adventurePanel.play.disabled = !validation.ok;
+      adventurePanel.play.title = validation.ok ? 'Start Play Mode' : 'Complete required adventure markers first';
+    }
   }
 
   function playBuildPatrolPoints(origin) {
@@ -7648,21 +7959,28 @@
     }
   }
 
-  function playMarkerReached(type) {
+  function playMarkerReached(type, range) {
     const marker = playMode.markers[type];
-    return !!marker && playDistance(playMode.player, marker) <= PLAY_INTERACT_RANGE;
+    return !!marker && playDistance(playMode.player, marker) <= (range || PLAY_INTERACT_RANGE);
   }
 
   function updatePlayObjective() {
     if (playMode.ended) return;
     const objective = playMode.objective;
+    const nextNpcLine = playMarkerReached('npc', 0.82) ? 'Villager: The marked place changes the whole road.' : '';
+    if (nextNpcLine !== playMode.npcLine) {
+      playMode.npcLine = nextNpcLine;
+      updatePlayHud();
+    }
     if ((objective === 'collect_relic' || objective === 'unlock_gate') && !playMode.collectedRelic && playMarkerReached('chest')) {
       playMode.collectedRelic = true;
       if (typeof playSfx === 'function') playSfx('knock', 0.45);
+      renderGameLayer();
       if (objective === 'collect_relic') playComplete('won');
     }
     if (objective === 'unlock_gate' && playMode.collectedRelic && !playMode.gateUnlocked && playMarkerReached('gate')) {
       playMode.gateUnlocked = true;
+      renderGameLayer();
       playComplete('won');
     }
     if (objective === 'escape' && playMarkerReached('exit')) {
@@ -7673,6 +7991,7 @@
   function playObjectiveText() {
     if (playMode.result === 'won') return 'Objective complete.';
     if (playMode.result === 'lost') return 'Restart or return to the editor.';
+    if (playMode.npcLine) return playMode.npcLine;
     if (playMode.objective === 'collect_relic') return playMode.collectedRelic ? 'Relic collected.' : 'Find the chest.';
     if (playMode.objective === 'unlock_gate') return playMode.collectedRelic ? 'Bring the relic to the gate.' : 'Find the chest first.';
     if (playMode.objective === 'escape') return 'Reach the exit.';
@@ -7852,6 +8171,7 @@
     playMode.objectiveStatus = GAME_OBJECTIVE_LABELS[setup.objective] || 'Defeat the villain';
     playMode.collectedRelic = false;
     playMode.gateUnlocked = false;
+    playMode.npcLine = '';
     playMode.markers = setup.markers;
     playMode.player = {
       x: setup.player.x,
@@ -7898,6 +8218,8 @@
       playHud.toggle.setAttribute('data-tooltip', 'Return to editor');
       playHud.toggle.setAttribute('aria-label', 'Return to editor');
     }
+    renderGameLayer();
+    updateAdventurePanel();
     syncPlayMeshes();
     updatePlayHud();
     if (typeof playSfx === 'function') playSfx('whoosh', 0.6);
@@ -7920,6 +8242,7 @@
     playMode.objective = normalizeGameObjective(gameLayer.objective);
     playMode.collectedRelic = false;
     playMode.gateUnlocked = false;
+    playMode.npcLine = '';
     document.body.classList.remove('play-mode');
     if (playHud.root) playHud.root.hidden = true;
     if (playHud.toggle) {
@@ -7936,6 +8259,8 @@
       setCameraMode(backup.cameraMode);
     }
     playMode.cameraBackup = null;
+    renderGameLayer();
+    updateAdventurePanel();
     if (!silent && typeof playSfx === 'function') playSfx('whoosh', 0.5);
   }
 
@@ -7987,6 +8312,11 @@
   if (playHud.attack) playHud.attack.addEventListener('click', tryPlayerAttack);
   if (playHud.reset) playHud.reset.addEventListener('click', restartPlayMode);
   if (playHud.exit) playHud.exit.addEventListener('click', () => exitPlayMode());
+  if (adventurePanel.objective) adventurePanel.objective.addEventListener('change', () => {
+    setGameObjective(adventurePanel.objective.value);
+  });
+  if (adventurePanel.play) adventurePanel.play.addEventListener('click', () => enterPlayMode());
+  updateAdventurePanel();
 
   window.render_game_to_text = function renderGameToText() {
     const openCount = playOpenCells().length;
@@ -8017,6 +8347,7 @@
       objectiveText: playMode.active ? playObjectiveText() : (GAME_OBJECTIVE_LABELS[normalizeGameObjective(gameLayer.objective)] || 'Defeat the villain'),
       collectedRelic: !!playMode.collectedRelic,
       gateUnlocked: !!playMode.gateUnlocked,
+      npcLine: playMode.npcLine || '',
     }, null, 2);
   };
 
@@ -8818,9 +9149,9 @@
   // accepts the object form too (so AI output drops in unchanged).
   const WORLD_SCHEMA = {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://tinyworld.local/world.schema.json",
-  "title": "TinyWorld",
-  "description": "Scene description for the Tiny World Builder. Renders an 8x8 grid of cells, each with a terrain (always set), an optional object 'kind', a stack count for objects, an optional forced buildingType variant for houses, and an optional fenceSide for fences. Defaults: terrain='grass', kind=null, floors=1, buildingType=null, fenceSide=null. Only emit cells that differ from the defaults \u2014 the renderer fills the rest with grass.",
+  "$id": "https://adventure-world-builder.local/world.schema.json",
+  "title": "AdventureWorld",
+  "description": "Scene description for Adventure World Builder. Renders a sparse editable world plus a separate gameLayer for adventure markers and objectives. Only emit cells that differ from the defaults; the renderer fills the rest with grass.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -8831,21 +9162,36 @@
     "v": {
       "type": "integer",
       "enum": [
-        4
+        5
       ],
-      "description": "Schema version. Must be 4."
+      "description": "Schema version. Must be 5."
+    },
+    "gridSize": {
+      "type": "integer",
+      "enum": [
+        8,
+        12,
+        16,
+        20
+      ],
+      "description": "Optional editable board size. Defaults to 8 when omitted."
     },
     "cells": {
       "type": "array",
-      "description": "Sparse list of non-default cells on the 8x8 grid (x in 0..7, z in 0..7). Each (x,z) must appear at most once.",
+      "description": "Sparse list of non-default cells on the current grid. x/z must be inside the active grid size. Each (x,z) should appear at most once.",
       "items": {
         "$ref": "#/$defs/cell"
       }
+    },
+    "gameLayer": {
+      "$ref": "#/$defs/gameLayer",
+      "description": "Adventure authoring data kept separate from terrain and object cells."
     },
     "cameraMode": {
       "type": "string",
       "enum": [
         "ortho",
+        "soft",
         "perspective"
       ],
       "description": "Optional preferred camera. Defaults to current camera if omitted."
@@ -8856,6 +9202,55 @@
     }
   },
   "$defs": {
+    "gameLayer": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "objective": {
+          "type": "string",
+          "enum": [
+            "defeat_villain",
+            "collect_relic",
+            "unlock_gate",
+            "escape"
+          ],
+          "description": "Active board objective. Defaults to defeat_villain."
+        },
+        "markers": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "playerSpawn": { "$ref": "#/$defs/marker" },
+            "villainSpawn": { "$ref": "#/$defs/marker" },
+            "chest": { "$ref": "#/$defs/marker" },
+            "gate": { "$ref": "#/$defs/marker" },
+            "npc": { "$ref": "#/$defs/marker" },
+            "questPoint": { "$ref": "#/$defs/marker" },
+            "exit": { "$ref": "#/$defs/marker" }
+          }
+        }
+      }
+    },
+    "marker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "z"
+      ],
+      "properties": {
+        "x": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 19
+        },
+        "z": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 19
+        }
+      }
+    },
     "cell": {
       "type": "object",
       "additionalProperties": false,
@@ -8873,12 +9268,12 @@
         "x": {
           "type": "integer",
           "minimum": 0,
-          "maximum": 7
+          "maximum": 19
         },
         "z": {
           "type": "integer",
           "minimum": 0,
-          "maximum": 7
+          "maximum": 19
         },
         "terrain": {
           "type": "string",
@@ -8888,7 +9283,7 @@
             "dirt",
             "water"
           ],
-          "description": "Tile material. 'water' should not host kinds (no kinds float). 'dirt' is auto-applied under crops by the renderer; you may set it explicitly."
+          "description": "Tile material. Water should not host object kinds except bridge. Crop-type kinds imply terrain='dirt'."
         },
         "kind": {
           "type": [
@@ -8910,19 +9305,19 @@
             "sunflower",
             "tuft"
           ],
-          "description": "Object placed on the cell, or null for none. House uses 'floors' and optional 'buildingType'. Fence uses 'fenceSide' to render a single side/leaf on one tile edge or centre line. Fences on perpendicular sides of a house can promote it to a castle turret and the connected fence component to a stone wall. Rock is a low-poly landmark prop. Bridge is the only kind that may sit on water and auto-orients toward nearby path/land. Crop-type kinds (crop/corn/wheat/pumpkin/carrot/sunflower) imply terrain='dirt'."
+          "description": "Object placed on the cell, or null for none. House uses floors and optional buildingType. Fence uses fenceSide. Bridge is the only kind intended for water."
         },
         "floors": {
           "type": "integer",
           "minimum": 1,
           "maximum": 8,
-          "description": "Object stack/intensity count. For houses it means floors: cottages plateau visually at 3; high-rises need 4+; manors read best at 1-3; towers at 2-6. For non-house props/crops it is enhancement density from repeat taps (1=normal, higher=larger/denser/more detailed). It must not be used to raise the ground."
+          "description": "Object stack/intensity count. For houses it means floors. For props/crops it means denser or more detailed variants."
         },
         "terrainFloors": {
           "type": "integer",
           "minimum": 1,
           "maximum": 8,
-          "description": "Ground height stack for the terrain layer only. Terrain repeat taps raise this value. Object repeat taps raise floors instead."
+          "description": "Ground height stack for the terrain layer only."
         },
         "buildingType": {
           "type": [
@@ -8937,7 +9332,7 @@
             "turret",
             "skyscraper"
           ],
-          "description": "Forces a single-cell house variant. Only meaningful when kind='house'. null = 'auto': cluster logic merges adjacent houses into linear/L/T/+/2x2 forms and auto-promotes solo 4+ floor houses to skyscrapers. cottage/manor/tower/turret/skyscraper bypass clustering \u2014 adjacent forced-variant houses stay independent."
+          "description": "Forced single-cell house variant. null uses cluster logic. turret supports castle-style tower cells."
         },
         "fenceSide": {
           "type": [
@@ -8953,7 +9348,7 @@
             "center-x",
             "center-z"
           ],
-          "description": "For fences only. n/s/e/w place one fence leaf on that tile edge. center-x and center-z place a centre-line fence. null defaults to n for fence and is ignored for other kinds."
+          "description": "For fences only. n/s/e/w place one fence leaf on that tile edge. center-x and center-z place a centre-line fence."
         }
       }
     }
@@ -8998,7 +9393,7 @@
       },
       buildingType: {
         type: ['string', 'null'],
-        enum: [null, 'cottage', 'manor', 'tower', 'skyscraper'],
+        enum: [null, 'cottage', 'manor', 'tower', 'turret', 'skyscraper'],
       },
     },
   };
@@ -9045,11 +9440,11 @@
 
   function buildSystemPrompt() {
     return [
-      'You are a level designer for the Tiny World Builder, an 8x8 isometric voxel scene.',
+      'You are a level designer for Adventure World Builder, an isometric voxel world and adventure board.',
       'Output a JSON object that strictly matches the provided JSON Schema. Do not include prose, markdown fences, or explanations — only the JSON object.',
-      'Grid coordinates: x in 0..7 (left-right), z in 0..7 (front-back). Default cell is grass with no object.',
+      'Use gridSize 8 unless the prompt asks for a larger board. Grid coordinates must stay inside gridSize: x is left-right, z is front-back. Default cell is grass with no object.',
       'Only emit cells that differ from defaults — the renderer fills the rest.',
-      'Houses cluster automatically when buildingType is null: adjacent houses merge into linear, L/T/+, or 2x2 forms. To force a single-cell variant set buildingType to cottage|manor|tower|skyscraper.',
+      'Houses cluster automatically when buildingType is null: adjacent houses merge into linear, L/T/+, or 2x2 forms. To force a single-cell variant set buildingType to cottage|manor|tower|turret|skyscraper.',
       'Repeat-tapping the same object increases floors/intensity: houses grow upward; trees, rocks, bridges, fences, tufts, and crops become larger, denser, or more detailed.',
       'A fence is a single side/leaf, not a full square. Set fenceSide to n|s|e|w for tile edges or center-x|center-z for centre-line walls.',
       'Fences placed on two perpendicular sides of a house can promote it to a castle turret and turn connected fence cells into stone wall — use this for castles.',
@@ -9060,6 +9455,7 @@
       'Crops (crop, corn, wheat, pumpkin, carrot, sunflower) imply terrain=dirt; the renderer enforces that, but you may set terrain explicitly.',
       'Trees and tufts read best on grass. Rocks work as edges, overlooks, or focal points.',
       'Use floors/intensity deliberately: terrain stacks into height, repeated objects gain size/detail, and fences vary from wood to wire/stone/steel wall styles.',
+      'If the prompt asks for a playable adventure, add a gameLayer with objective and supported markers only. Do not invent unsupported marker types.',
       'Avoid noise and full-grid filling. Aim for a coherent, readable scene — vary heights, leave breathing room, group related elements.',
       '',
       'JSON Schema:',
@@ -9069,7 +9465,7 @@
 
   function buildAutoSystemPrompt() {
     return [
-      'You are the Auto palette tool for Tiny World Builder, an 8x8 isometric voxel scene.',
+      'You are the Auto palette tool for Adventure World Builder, an isometric voxel world editor.',
       'Read the current home-board JSON and produce a ranked batch of candidate tile actions the player may place next.',
       'Do not choose coordinates and do not replace the whole world. The player will still choose the clicked tile locally.',
       'Base the suggestions on the current sparse world state, nearby patterns, and what would be coherent next manual placements.',
@@ -9235,7 +9631,7 @@
         system,
         tools: [{
           name: toolName,
-          description: (toolSpec && toolSpec.description) || 'Emit a Tiny World scene as JSON.',
+          description: (toolSpec && toolSpec.description) || 'Emit an Adventure World scene as JSON.',
           input_schema: (toolSpec && toolSpec.schema) || WORLD_SCHEMA,
         }],
         tool_choice: { type: 'tool', name: toolName },
@@ -9344,7 +9740,7 @@
     if (cfg.provider === 'anthropic') {
       raw = await callAnthropic(def.endpoint, cfg.key, cfg.model, system, user, {
         name: 'choose_auto_suggestions',
-        description: 'Choose a ranked batch of Tiny World tile actions for the Auto palette tool.',
+        description: 'Choose a ranked batch of Adventure World tile actions for the Auto palette tool.',
         schema: AUTO_SUGGESTIONS_SCHEMA,
       });
     } else {

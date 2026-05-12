@@ -1,6 +1,6 @@
 Original prompt: Build the first playable Tiny World Builder vertical slice: preserve the editor, add Play Mode with player movement, collisions, attack, one villain enemy, win/lose/reset flow, and deterministic test hooks.
 
-Current prompt: Stabilize the vertical slice into an adventure-authoring foundation with `gameLayer`, marker tools, objective validation, upgraded deterministic enemy behavior, local dev cleanup, and a smoke-test script.
+Current prompt: Add Adventure UX and objective gameplay polish: Adventure Panel, interactive chest/gate/exit/NPC states, objective-specific smoke tests, authoring quality, docs, and schema updates.
 
 ## Notes
 
@@ -26,3 +26,8 @@ Current prompt: Stabilize the vertical slice into an adventure-authoring foundat
 - Play Mode now validates required markers before starting, reads spawn positions from `gameLayer`, supports four objective types, and upgrades the villain with patrol, guard radius, line-of-sight, attack windup, and low-health retreat.
 - Replaced the local `/auth.js` request with a conditional production-only loader, added `npm run smoke:play`, and verified the smoke script exits cleanly without leaving server/browser processes running.
 - Rewrote `README.md` for the public Adventure World Builder fork, with explicit Tiny World Builder/Jason Kneen attribution, AGPL guidance, run/deploy instructions, architecture notes, smoke test docs, and roadmap. Updated package metadata to `adventure-world-builder`, the fork URL, and `AGPL-3.0-only`.
+- Added an Adventure panel for objective selection, required marker status, validation errors, and one-click Play Mode entry.
+- Prevented adventure markers from being placed on blocked tiles during editing, added editor marker labels, and softened/hidden inactive markers during Play Mode.
+- Made objective objects reactive: chests open after relic collection, gates open after unlocking, exits only surface for escape objectives, and NPC markers can surface a short quest line.
+- Expanded `npm run smoke:play` to cover all four objective types, NPC dialogue, and export/import preservation for `gameLayer`.
+- Updated `world.schema.json`, the embedded `WORLD_SCHEMA`, and README documentation for `gameLayer`, adventure markers, objective gameplay, `soft` camera mode, and AGPL/package metadata alignment.

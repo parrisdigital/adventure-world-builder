@@ -10,10 +10,19 @@ It is based on [Tiny World Builder](https://github.com/jasonkneen/tiny-world-bui
 
 ## What It Is
 
-Adventure World Builder has two modes:
+Adventure World Builder keeps the quiet diorama editor as the authoring surface, then adds a separate adventure runtime on top of the authored world.
 
-- **Editor Mode**: paint terrain, place buildings, grow trees, draw fences, build farms, shape rivers, and create a tiny voxel world.
-- **Play Mode**: drop a character into the authored world, move around the board, fight a villain, complete an objective, and return to editing.
+## Editor Mode
+
+Editor Mode is for building the world: paint terrain, place buildings, grow trees, draw fences, build farms, shape rivers, and set adventure markers without starting combat.
+
+Terrain/object rules are normalized by the renderer: crops force dirt underneath, bridges force water, and ordinary objects do not float on water. Paths, shorelines, water foam, bridges, fences, castle walls, houses, and rocks are adjacency-aware.
+
+## Play Mode
+
+Play Mode drops a character into the authored world. Movement respects blocked terrain and objects, the camera follows the player, the villain patrols and chases locally, and objectives can complete the board before returning to the editor.
+
+## Adventure Markers
 
 The current game layer supports:
 
@@ -26,6 +35,8 @@ The current game layer supports:
 - Exit markers
 - Objective validation before Play Mode starts
 - Local deterministic villain behavior: patrol, guard radius, line-of-sight, attack windup, and retreat at low health
+
+Adventure markers are stored in `gameLayer`, separate from terrain/object tile data, and are exported/imported with world JSON. The editor includes an Adventure panel for choosing the objective, seeing required markers, and catching invalid setup before Play Mode starts.
 
 ## Current Objectives
 
@@ -97,8 +108,6 @@ Adventure marker tools:
 
 `Spawn` · `Villain` · `Chest` · `Gate` · `NPC` · `Quest` · `Exit`
 
-Terrain/object rules are normalized by the renderer: crops force dirt underneath, bridges force water, and ordinary objects do not float on water. Paths, shorelines, water foam, bridges, fences, castle walls, houses, and rocks are adjacency-aware.
-
 ## Architecture
 
 The app is intentionally simple to run: it is still centered around a single HTML file with inline CSS and JavaScript using Three.js r128.
@@ -128,24 +137,21 @@ The smoke test starts a temporary static server and headless Chrome session, the
 - Play Mode hooks load
 - `gameLayer` markers can be set
 - Play Mode starts from explicit markers
-- defeating the villain completes the objective
-- exiting Play Mode returns clean editor state
+- `defeat_villain`, `collect_relic`, `unlock_gate`, and `escape` objectives complete
+- NPC markers can surface a short dialogue line
 - objective validation catches missing required markers
+- export/import preserves `gameLayer`
 
 ## Roadmap
 
 Near-term:
 
-- Add an Adventure Panel for objective selection and marker validation.
-- Improve marker thumbnails and marker placement validation in the editor.
-- Add objective-specific smoke tests for every objective type.
-- Update `world.schema.json` to include `gameLayer`.
 - Add a Vercel entrypoint or rewrite.
+- Add quest chains and multiple objectives.
+- Add richer NPC interactions.
 
 Future:
 
-- Quest chains and multiple objectives.
-- NPC dialogue.
 - More enemy archetypes.
 - Encounter planning through validated JSON.
 - Optional AI director endpoints for generating villains, quests, and encounter plans without giving AI direct frame-by-frame control.
@@ -156,7 +162,7 @@ This project is distributed under the GNU Affero General Public License v3.0, ma
 
 Because this project is based on an AGPL-licensed work, public hosted modified versions should also make their corresponding source code available. If you want to use this work in a closed-source or differently licensed product, get explicit permission or a separate license from the original author and any other rights holders.
 
-Note: if package metadata disagrees with the root `LICENSE`, treat the root `LICENSE` as authoritative until the metadata is corrected.
+License metadata note: the upstream repository has had a root AGPL license while package metadata may indicate a different license. Treat the root `LICENSE` as authoritative. This fork aligns its package metadata to `AGPL-3.0-only`.
 
 ## Credits
 
