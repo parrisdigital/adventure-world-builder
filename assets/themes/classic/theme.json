@@ -6,5 +6,22 @@
   "objects": ["house", "tree", "fence", "rock", "bridge", "crop", "corn", "wheat", "pumpkin", "carrot", "sunflower", "tuft"],
   "buildings": ["cottage", "manor", "tower", "turret", "skyscraper"],
   "characters": ["hero", "villain", "villager", "guard", "farmer", "merchant"],
-  "defaultPreset": "classic"
+  "defaultPreset": "classic",
+  "visualIdentity": {
+    "world": "quiet farmland village",
+    "palette": ["meadow green", "warm dirt", "cream stone", "soft river blue", "weathered wood"],
+    "materials": ["painted wood", "field stone", "thatched accents", "cloth banners"]
+  },
+  "terrainDetails": ["meadow grass", "worn dirt road", "farm dirt", "shallow river", "raised grassy mounds", "stone path"],
+  "structureDetails": ["cottage", "farmhouse", "barn", "manor", "stone tower", "wooden fence", "small bridge", "well", "market stall", "storage shed"],
+  "propDetails": ["oak tree", "stump", "hay bale", "crop rows", "crate", "barrel", "signpost", "lantern"],
+  "characterArchetypes": {
+    "hero": "village defender with cape, short sword, and small shield",
+    "villain": "outlaw mage or bandit captain",
+    "villager": "same-scale village resident",
+    "guard": "spear-and-shield village guard",
+    "merchant": "travelling seller with satchel",
+    "farmer": "farm worker with hand tool"
+  },
+  "encounterHooks": ["raiders near farms", "villain in tower or manor", "bridge ambush", "crop or relic recovery"]
 }

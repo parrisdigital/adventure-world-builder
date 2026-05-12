@@ -6,5 +6,22 @@
   "objects": ["bamboo", "lantern", "bridge", "rock", "crop", "wheat", "tuft"],
   "buildings": ["temple", "pagoda", "watchtower"],
   "characters": ["hero", "villain", "villager", "guard", "merchant"],
-  "defaultPreset": "china-courtyard"
+  "defaultPreset": "china-courtyard",
+  "visualIdentity": {
+    "world": "Chinese courtyard neighborhood with market lanes, canals, gardens, and denser city blocks",
+    "palette": ["courtyard gray", "red-brown earth", "lantern red", "deep roof blue", "bamboo green", "warm shop light"],
+    "materials": ["stone paving", "tiled roof", "painted wood", "garden wall", "canal railing"]
+  },
+  "terrainDetails": ["courtyard stone", "garden grass", "red-brown earth", "canal water", "gray street paving", "raised wall platform"],
+  "structureDetails": ["courtyard house", "tiled-roof residence", "market shop", "tea house", "apartment or condo block", "fortified gate", "watchtower", "arched bridge", "garden wall", "small pavilion"],
+  "propDetails": ["bamboo", "pine tree", "plum blossom tree", "red lantern", "stone lion marker", "market cart", "crate stack", "bench", "garden rock", "canal railing", "signboard", "community notice board"],
+  "characterArchetypes": {
+    "hero": "city guardian or courier adventurer with compact blade silhouette",
+    "villain": "corrupt tower boss, rooftop enforcer, or relic thief",
+    "villager": "neighborhood resident",
+    "guard": "gate guard",
+    "merchant": "street vendor",
+    "questGiver": "elder, shop owner, or courier contact"
+  },
+  "encounterHooks": ["market-lane chase", "gate unlock objective", "canal bridge control", "condo courtyard rescue", "tower boss encounter"]
 }

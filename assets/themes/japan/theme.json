@@ -6,5 +6,22 @@
   "objects": ["sakura", "bamboo", "lantern", "torii", "bridge", "rock", "crop", "wheat", "tuft"],
   "buildings": ["temple", "pagoda", "watchtower"],
   "characters": ["hero", "villain", "villager", "guard", "merchant"],
-  "defaultPreset": "japan-temple"
+  "defaultPreset": "japan-temple",
+  "visualIdentity": {
+    "world": "Japanese temple village and garden",
+    "palette": ["garden green", "pale stone", "dark blue roof tile", "red torii", "sakura pink", "bamboo green"],
+    "materials": ["wood beam", "stone lantern", "tile roof", "paper lantern", "mossy stone"]
+  },
+  "terrainDetails": ["garden grass", "pale stone path", "packed earth path", "koi pond or canal water", "mossy stone", "raised temple platform"],
+  "structureDetails": ["machiya-style home", "shrine building", "temple hall", "pagoda", "watchtower", "torii gate", "stone steps", "garden bridge", "low wooden fence", "courtyard wall"],
+  "propDetails": ["sakura tree", "bamboo cluster", "pine tree", "stone lantern", "hanging lantern", "small shrine box", "banner sign", "rice paddy", "garden stones", "water basin", "wooden bench"],
+  "characterArchetypes": {
+    "hero": "temple guardian adventurer with compact blade and shield silhouette",
+    "villain": "masked rogue, rival guardian, or spirit-touched warlord",
+    "villager": "kimono-inspired voxel villager at NPC baseline scale",
+    "guard": "temple guard with polearm",
+    "merchant": "market vendor with small pack",
+    "questGiver": "shrine attendant or elder"
+  },
+  "encounterHooks": ["protect the shrine gate", "recover relic from pagoda courtyard", "unlock temple gate", "bamboo bridge chase"]
 }

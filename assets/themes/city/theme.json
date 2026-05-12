@@ -6,5 +6,22 @@
   "objects": ["tree", "rock", "bridge", "tuft"],
   "buildings": ["manor", "skyscraper"],
   "characters": ["hero", "villain", "villager", "guard", "merchant"],
-  "defaultPreset": "city-grid"
+  "defaultPreset": "city-grid",
+  "visualIdentity": {
+    "world": "modern tactical city block",
+    "palette": ["asphalt black", "sidewalk concrete", "glass blue", "brick red", "park green", "signal yellow"],
+    "materials": ["glass", "concrete", "brick", "painted metal", "street plastic"]
+  },
+  "terrainDetails": ["asphalt road", "sidewalk", "plaza concrete", "park grass", "construction dirt", "storm drain water", "crosswalk markings"],
+  "structureDetails": ["skyscraper", "condo or apartment block", "shopfront", "townhouse", "parking garage", "park pavilion", "alley gate", "bus stop", "street corner building", "rooftop access block"],
+  "propDetails": ["street tree", "planter", "streetlight", "traffic cone", "parked car", "delivery van", "bench", "trash can", "hydrant", "dog park fence", "dog park sign", "fountain", "bike rack"],
+  "characterArchetypes": {
+    "hero": "urban adventurer or courier with readable tactical gear",
+    "villain": "rooftop boss, cyber-thief, or corrupt developer archetype",
+    "villager": "city resident",
+    "guard": "security guard",
+    "merchant": "shopkeeper",
+    "questGiver": "park ranger, mechanic, or dispatch contact"
+  },
+  "encounterHooks": ["alley ambush", "retrieve package or relic from shop or van", "unlock gate through dog park", "city-block escape objective", "rooftop or condo patrol"]
 }
