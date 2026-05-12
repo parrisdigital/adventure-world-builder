@@ -1,24 +1,25 @@
 {
-  "name": "repo",
+  "name": "adventure-world-builder",
   "version": "1.0.0",
-  "description": "A self-contained 3D voxel world editor in a single HTML file. No build, no dependencies installed locally — just open `tiny-world-builder.html` in a browser. Three.js r128 is pulled from cdnjs at runtime.",
+  "description": "An AGPL open-source expansion of Tiny World Builder with adventure authoring, Play Mode, objectives, and local villain gameplay.",
   "main": "index.js",
   "scripts": {
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/migrate.mjs",
+    "smoke:play": "node scripts/smoke-play-mode.mjs",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jasonkneen/tiny-world-builder.git"
+    "url": "git+https://github.com/parrisdigital/adventure-world-builder.git"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "AGPL-3.0-only",
   "bugs": {
-    "url": "https://github.com/jasonkneen/tiny-world-builder/issues"
+    "url": "https://github.com/parrisdigital/adventure-world-builder/issues"
   },
-  "homepage": "https://github.com/jasonkneen/tiny-world-builder#readme",
+  "homepage": "https://github.com/parrisdigital/adventure-world-builder#readme",
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
     "@netlify/database": "^1.0.0",

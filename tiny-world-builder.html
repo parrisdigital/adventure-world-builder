@@ -303,6 +303,7 @@
     z-index: 10;
     max-width: calc(100vw - 32px);
     overflow-x: auto;
+    transition: opacity 0.16s ease, transform 0.16s ease;
   }
   .tool {
     width: 68px;
@@ -446,6 +447,85 @@
     font-family: inherit;
     color: var(--ink);
     box-shadow: 0 1px 0 rgba(0,0,0,0.03);
+  }
+
+  body.play-mode .toolbar,
+  body.play-mode .flyout,
+  body.play-mode .help,
+  body.play-mode .unsaved-banner {
+    opacity: 0;
+    pointer-events: none;
+  }
+  body.play-mode canvas { cursor: default; }
+
+  .play-hud {
+    position: fixed;
+    top: 88px;
+    left: 28px;
+    z-index: 12;
+    width: min(310px, calc(100vw - 56px));
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(235, 227, 210, 0.96);
+    border-radius: 14px;
+    padding: 12px;
+    box-shadow: 0 14px 38px -24px rgba(50, 35, 10, 0.42);
+    backdrop-filter: blur(6px);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .play-hud[hidden] { display: none; }
+  .play-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .play-title {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 18px;
+    line-height: 1.05;
+    font-weight: 500;
+  }
+  .play-objective {
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.35;
+  }
+  .play-row {
+    display: grid;
+    grid-template-columns: 58px 1fr 36px;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .play-meter {
+    height: 8px;
+    border-radius: 999px;
+    background: #eee4d2;
+    overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(80, 55, 20, 0.05);
+  }
+  .play-meter span {
+    display: block;
+    height: 100%;
+    width: 100%;
+    border-radius: inherit;
+    background: #4f9a44;
+    transition: width 0.12s ease;
+  }
+  .play-meter.villain span { background: #b84838; }
+  .play-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .play-actions .btn {
+    flex: 1 1 auto;
+    padding: 8px 10px;
   }
 
   .grain {
@@ -966,6 +1046,7 @@
     .help { display: none; }
     .controls { top: 20px; right: 20px; }
     .brand { top: 20px; left: 20px; }
+    .play-hud { top: 78px; left: 20px; width: calc(100vw - 40px); }
     .toolbar { bottom: 16px; padding: 6px; gap: 2px; }
     .tool { width: 60px; height: 70px; font-size: 10px; padding: 3px 2px; }
     .tool .swatch { width: 22px; height: 22px; }
@@ -1024,6 +1105,9 @@
     </button>
     <button class="btn icon" id="home" data-tooltip="Center on your grid" aria-label="Center on your 8 by 8 grid">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z"/></svg>
+    </button>
+    <button class="btn icon" id="play-toggle" data-tooltip="Play this world" aria-label="Play this world">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4l14 8-14 8z"/></svg>
     </button>
     <button class="btn icon" id="reset" data-tooltip="Reset world" aria-label="Reset world">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
@@ -1422,7 +1506,41 @@
     Tools: <kbd>1-9</kbd> + letters · <kbd>E</kbd> erase · Right-drag / <kbd>Space</kbd> drag pan · <kbd>P</kbd> perspective
   </div>
 
-  <script src="auth.js"></script>
+  <div class="play-hud" id="play-hud" hidden>
+    <div class="play-head">
+      <div>
+        <div class="play-title" id="play-title">Play Mode</div>
+        <div class="play-objective" id="play-objective">Defeat the villain.</div>
+      </div>
+    </div>
+    <div class="play-row">
+      <span>Player</span>
+      <div class="play-meter"><span id="play-health-bar"></span></div>
+      <span id="play-health">6/6</span>
+    </div>
+    <div class="play-row">
+      <span>Villain</span>
+      <div class="play-meter villain"><span id="play-villain-bar"></span></div>
+      <span id="play-villain-health">4/4</span>
+    </div>
+    <div class="play-actions">
+      <button class="btn" id="play-attack" type="button">Attack</button>
+      <button class="btn" id="play-reset" type="button">Restart</button>
+      <button class="btn" id="play-exit" type="button">Editor</button>
+    </div>
+  </div>
+
+  <script>
+    (function loadAuthBundle() {
+      try {
+        const u = new URL(location.href);
+        const local = u.searchParams.has('dev') || location.protocol === 'file:' ||
+          ['localhost', '127.0.0.1', '0.0.0.0'].includes(location.hostname) ||
+          location.hostname.endsWith('.local');
+        if (!local) document.write('<script src="auth.js"><\\/script>');
+      } catch (_) {}
+    })();
+  </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
   /* =====================================================================
@@ -2019,6 +2137,23 @@
 
     cloud:     new THREE.MeshLambertMaterial({ color: 0xfdfcf8 }),
     cloudShade:new THREE.MeshLambertMaterial({ color: 0xdcd9d0 }),
+
+    playerTunic:  new THREE.MeshLambertMaterial({ color: 0x3a72c8 }),
+    playerFace:   new THREE.MeshLambertMaterial({ color: 0xf0bf86 }),
+    playerHair:   new THREE.MeshLambertMaterial({ color: 0x5c3818 }),
+    playerBlade:  new THREE.MeshLambertMaterial({ color: 0xd8dde5 }),
+    villainCloak: new THREE.MeshLambertMaterial({ color: 0x7a2634 }),
+    villainFace:  new THREE.MeshLambertMaterial({ color: 0xc98f5d }),
+    villainEye:   new THREE.MeshLambertMaterial({ color: 0xf2c849 }),
+    playAttack:   new THREE.MeshBasicMaterial({ color: 0xf2c849, transparent: true, opacity: 0.52, depthWrite: false }),
+    markerPlayer: new THREE.MeshLambertMaterial({ color: 0x3a72c8 }),
+    markerVillain:new THREE.MeshLambertMaterial({ color: 0xb84838 }),
+    markerChest:  new THREE.MeshLambertMaterial({ color: 0xd9a82b }),
+    markerGate:   new THREE.MeshLambertMaterial({ color: 0x7a5d8f }),
+    markerNpc:    new THREE.MeshLambertMaterial({ color: 0x4f9a44 }),
+    markerQuest:  new THREE.MeshLambertMaterial({ color: 0xf2c849 }),
+    markerExit:   new THREE.MeshLambertMaterial({ color: 0x2c9a78 }),
+    markerRing:   new THREE.MeshBasicMaterial({ color: 0x2a2722, transparent: true, opacity: 0.22, depthWrite: false }),
 
     hover:     new THREE.MeshBasicMaterial({ color: 0x2a2722, transparent: true, opacity: 0.18, depthWrite: false }),
     hoverErase:new THREE.MeshBasicMaterial({ color: 0xb84838, transparent: true, opacity: 0.28, depthWrite: false }),
@@ -4041,6 +4176,194 @@
     return new THREE.Vector3(x - GRID / 2 + 0.5, 0, z - GRID / 2 + 0.5);
   }
 
+  // -------- game layer --------
+  const GAME_MARKER_TYPES = ['playerSpawn', 'villainSpawn', 'chest', 'gate', 'npc', 'questPoint', 'exit'];
+  const GAME_OBJECTIVES = ['defeat_villain', 'collect_relic', 'unlock_gate', 'escape'];
+  const GAME_MARKER_DEFS = {
+    playerSpawn:  { label: 'Spawn',   material: M.markerPlayer },
+    villainSpawn: { label: 'Villain', material: M.markerVillain },
+    chest:        { label: 'Chest',   material: M.markerChest },
+    gate:         { label: 'Gate',    material: M.markerGate },
+    npc:          { label: 'NPC',     material: M.markerNpc },
+    questPoint:   { label: 'Quest',   material: M.markerQuest },
+    exit:         { label: 'Exit',    material: M.markerExit },
+  };
+  const GAME_OBJECTIVE_LABELS = {
+    defeat_villain: 'Defeat the villain',
+    collect_relic: 'Collect the relic',
+    unlock_gate: 'Unlock the gate',
+    escape: 'Reach the exit',
+  };
+  const gameLayer = {
+    objective: 'defeat_villain',
+    markers: {},
+  };
+  const gameLayerGroup = new THREE.Group();
+  gameLayerGroup.name = 'gameLayer';
+  scene.add(gameLayerGroup);
+
+  function normalizeGameObjective(value) {
+    return GAME_OBJECTIVES.includes(value) ? value : 'defeat_villain';
+  }
+
+  function normalizeGameMarker(type, marker) {
+    if (!GAME_MARKER_TYPES.includes(type) || !marker || typeof marker !== 'object') return null;
+    const x = Math.round(Number(marker.x));
+    const z = Math.round(Number(marker.z));
+    if (!Number.isInteger(x) || !Number.isInteger(z)) return null;
+    if (x < 0 || x >= HOME_GRID_MAX || z < 0 || z >= HOME_GRID_MAX) return null;
+    return { x, z };
+  }
+
+  function normalizeGameLayer(layer) {
+    const out = { objective: 'defeat_villain', markers: {} };
+    if (!layer || typeof layer !== 'object') return out;
+    out.objective = normalizeGameObjective(layer.objective);
+    const markers = layer.markers && typeof layer.markers === 'object' ? layer.markers : layer;
+    for (const type of GAME_MARKER_TYPES) {
+      const marker = normalizeGameMarker(type, markers[type]);
+      if (marker) out.markers[type] = marker;
+    }
+    return out;
+  }
+
+  function serializeGameLayer() {
+    const markers = {};
+    for (const type of GAME_MARKER_TYPES) {
+      const marker = gameLayer.markers[type];
+      if (marker) markers[type] = { x: marker.x, z: marker.z };
+    }
+    return { objective: normalizeGameObjective(gameLayer.objective), markers };
+  }
+
+  function makeGameMarkerMesh(type) {
+    const def = GAME_MARKER_DEFS[type] || GAME_MARKER_DEFS.questPoint;
+    const g = new THREE.Group();
+    g.name = 'gameMarker:' + type;
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.33, 0.018, 6, 28), M.markerRing);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.018;
+    g.add(ring);
+
+    if (type === 'playerSpawn') {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.46, 6), M.woodTrim);
+      post.position.y = 0.25;
+      const flag = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.16, 0.035), def.material);
+      flag.position.set(0.12, 0.38, 0);
+      g.add(post, flag);
+    } else if (type === 'villainSpawn') {
+      const shard = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.44, 5), def.material);
+      shard.position.y = 0.26;
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), M.villainEye);
+      eye.position.set(0, 0.34, -0.10);
+      g.add(shard, eye);
+    } else if (type === 'chest') {
+      const base = new THREE.Mesh(roundedBox(0.32, 0.18, 0.24, 0.035), M.bridgeWood);
+      base.position.y = 0.12;
+      const lid = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.08, 0.26), def.material);
+      lid.position.y = 0.25;
+      const latch = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 0.035), M.knob);
+      latch.position.set(0, 0.18, -0.14);
+      g.add(base, lid, latch);
+    } else if (type === 'gate') {
+      const left = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.46, 0.07), def.material);
+      const right = left.clone();
+      left.position.set(-0.18, 0.24, 0);
+      right.position.set(0.18, 0.24, 0);
+      const top = new THREE.Mesh(new THREE.BoxGeometry(0.43, 0.07, 0.07), def.material);
+      top.position.y = 0.45;
+      g.add(left, right, top);
+    } else if (type === 'npc') {
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.30, 8), def.material);
+      body.position.y = 0.18;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), M.playerFace);
+      head.position.y = 0.40;
+      g.add(body, head);
+    } else if (type === 'exit') {
+      const pad = new THREE.Mesh(new THREE.CircleGeometry(0.24, 24), def.material);
+      pad.rotation.x = -Math.PI / 2;
+      pad.position.y = 0.025;
+      const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.32, 3), M.markerExit);
+      arrow.position.y = 0.26;
+      arrow.rotation.y = Math.PI / 2;
+      g.add(pad, arrow);
+    } else {
+      const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.16, 0), def.material);
+      star.position.y = 0.26;
+      g.add(star);
+    }
+
+    g.traverse(o => {
+      if (!o.isMesh) return;
+      o.castShadow = false;
+      o.receiveShadow = false;
+    });
+    return g;
+  }
+
+  function renderGameLayer() {
+    while (gameLayerGroup.children.length) {
+      const c = gameLayerGroup.children.pop();
+      gameLayerGroup.remove(c);
+      disposeGroup(c);
+    }
+    for (const type of GAME_MARKER_TYPES) {
+      const marker = gameLayer.markers[type];
+      if (!marker || marker.x < 0 || marker.x >= GRID || marker.z < 0 || marker.z >= GRID) continue;
+      const p = tilePos(marker.x, marker.z);
+      const mesh = makeGameMarkerMesh(type);
+      mesh.userData.kind = 'gameMarker';
+      mesh.userData.markerType = type;
+      mesh.userData.gx = marker.x;
+      mesh.userData.gz = marker.z;
+      mesh.position.set(p.x, TOP_H + terrainRiseAt(marker.x, marker.z) + 0.035, p.z);
+      gameLayerGroup.add(mesh);
+    }
+  }
+
+  function applyGameLayer(layer, opts) {
+    const normalized = normalizeGameLayer(layer);
+    gameLayer.objective = normalized.objective;
+    gameLayer.markers = normalized.markers;
+    renderGameLayer();
+    if (!(opts && opts.skipSave)) saveState();
+  }
+
+  function clearGameLayer(opts) {
+    gameLayer.objective = 'defeat_villain';
+    gameLayer.markers = {};
+    renderGameLayer();
+    if (!(opts && opts.skipSave)) saveState();
+  }
+
+  function setGameObjective(objective, opts) {
+    gameLayer.objective = normalizeGameObjective(objective);
+    if (!(opts && opts.skipSave)) saveState();
+  }
+
+  function setGameMarker(type, x, z, opts) {
+    if (!GAME_MARKER_TYPES.includes(type)) return false;
+    const marker = normalizeGameMarker(type, { x, z });
+    if (!marker || marker.x >= GRID || marker.z >= GRID) return false;
+    gameLayer.markers[type] = marker;
+    renderGameLayer();
+    if (!(opts && opts.skipSave)) saveState();
+    return true;
+  }
+
+  function clearGameMarkerAt(x, z, opts) {
+    for (const type of GAME_MARKER_TYPES) {
+      const marker = gameLayer.markers[type];
+      if (marker && marker.x === x && marker.z === z) {
+        delete gameLayer.markers[type];
+        renderGameLayer();
+        if (!(opts && opts.skipSave)) saveState();
+        return true;
+      }
+    }
+    return false;
+  }
+
   // -------- home board border --------
   // A subtle outline around the editable GRID x GRID home board so the
   // user can tell at a glance where their board ends and the ghost
@@ -5455,7 +5778,10 @@
       if (world[x][z].kind === 'bridge') renderCellObject(x, z, { animate: false });
     }
     if (!kindChanged && !floorsChanged && !terrainFloorsChanged && !bTypeChanged && !fenceSideChanged) {
-      if (terrainChanged || tileHeightChanged || forceTile) saveState();
+      if (terrainChanged || tileHeightChanged || forceTile) {
+        renderGameLayer();
+        saveState();
+      }
       return;
     }
 
@@ -5542,6 +5868,7 @@
         delay:   isPrimary ? objectDelay : 0,
       });
     }
+    renderGameLayer();
     saveState();
     if (typeof fireWebhook === 'function') {
       fireWebhook('cell.set', { x, z, cell: world[x][z] });
@@ -5587,6 +5914,7 @@
 
   // -------- initial scene (matches the reference image) --------
   function loadInitialScene() {
+    clearGameLayer({ skipSave: true });
     // Wipe any existing meshes + animation state so a Reset re-plays the drop.
     for (const key in cellMeshes) {
       const e = cellMeshes[key];
@@ -5733,7 +6061,8 @@
     if (!tool || tool.erase || tool.auto) return null;
     const kind = tool.kind;
     let mesh = null;
-    if      (kind === 'tree')      mesh = makeTree();
+    if      (tool.gameMarker)      mesh = makeGameMarkerMesh(tool.gameMarker);
+    else if (kind === 'tree')      mesh = makeTree();
     else if (kind === 'rock')      mesh = makeRock({ n: false, s: false, e: false, w: false }, 1, 0, 0);
     else if (kind === 'tuft')      mesh = makeTuft();
     else if (kind === 'crop')      mesh = makeCrop();
@@ -5910,6 +6239,20 @@
     { id: 'carrot',    label: 'Carrot',    kind: 'carrot',    terrainOverride: 'dirt', color: '#e06a2a', shortcut: 'a', group: 'crops' },
     { id: 'sunflower', label: 'Sunflower', kind: 'sunflower', terrainOverride: 'dirt', color: '#f7b730', shortcut: 's', group: 'crops' },
     { id: 'tuft',   label: 'Tuft',   kind: 'tuft',  color: '#86b53e', shortcut: 't', group: 'nature' },
+    { id: 'marker-player',  label: 'Spawn',   gameMarker: 'playerSpawn',  color: '#3a72c8', shortcut: 'm', group: 'game' },
+    { id: 'marker-villain', label: 'Villain', gameMarker: 'villainSpawn', color: '#b84838', shortcut: 'v', group: 'game' },
+    { id: 'marker-chest',   label: 'Chest',   gameMarker: 'chest',        color: '#d9a82b', shortcut: 'h', group: 'game' },
+    { id: 'marker-gate',    label: 'Gate',    gameMarker: 'gate',         color: '#7a5d8f', shortcut: 'k', group: 'game' },
+    { id: 'marker-npc',     label: 'NPC',     gameMarker: 'npc',          color: '#4f9a44', shortcut: 'b', group: 'game' },
+    { id: 'marker-quest',   label: 'Quest',   gameMarker: 'questPoint',   color: '#f2c849', shortcut: 'q', group: 'game',
+      variants: [
+        { id: 'defeat',  label: 'Defeat',  objective: 'defeat_villain', hint: 'active objective: defeat villain' },
+        { id: 'collect', label: 'Collect', objective: 'collect_relic',  hint: 'active objective: collect relic from chest' },
+        { id: 'unlock',  label: 'Unlock',  objective: 'unlock_gate',    hint: 'active objective: collect relic and unlock gate' },
+        { id: 'escape',  label: 'Escape',  objective: 'escape',         hint: 'active objective: reach exit' },
+      ],
+    },
+    { id: 'marker-exit',    label: 'Exit',    gameMarker: 'exit',         color: '#2c9a78', shortcut: 'x', group: 'game' },
     { id: 'erase',  label: 'Erase',  erase: true, color: 'transparent', eraser: true, shortcut: 'e', group: 'tools' },
   ];
 
@@ -5949,6 +6292,7 @@
   }
 
   function makeThumbObject(tool) {
+    if (tool.gameMarker) return makeGameMarkerMesh(tool.gameMarker);
     const k = tool.kind;
     if (!k) return null;
     if (k === 'tree')      return makeTree();
@@ -5975,6 +6319,7 @@
   }
 
   function thumbTerrainFor(tool) {
+    if (tool.gameMarker) return 'grass';
     if (tool.terrain) return tool.terrain;
     if (tool.kind === 'bridge') return 'water';
     if (CROP_KINDS && CROP_KINDS.has && CROP_KINDS.has(tool.kind)) return 'dirt';
@@ -6112,7 +6457,7 @@
     TOOLS.forEach((t, i) => {
       if (t.hidden) return;
       const btn = document.createElement('button');
-      btn.className = 'tool' + (['grass', 'house', 'crop', 'erase'].includes(t.id) ? ' group-start' : '');
+      btn.className = 'tool' + (['grass', 'house', 'crop', 'marker-player', 'erase'].includes(t.id) ? ' group-start' : '');
       btn.dataset.id = t.id;
       btn.title = t.label + (t.shortcut ? ' (' + t.shortcut.toUpperCase() + ')' : '');
 
@@ -6200,6 +6545,7 @@
       item.addEventListener('click', e => {
         e.stopPropagation();
         tool.activeVariant = v;
+        if (v.objective) setGameObjective(v.objective);
         renderFlyout(el, tool);
         if (typeof refreshToolThumb === 'function') refreshToolThumb(tool.id);
         // Active variant changed → rebuild the ghost preview to match.
@@ -6240,6 +6586,7 @@
 
   // -------- click → place / erase --------
   function applyToolToCell(cell) {
+    if (selectedTool.gameMarker && (cell.boardX || cell.boardZ)) return;
     // Handle both home board and ghost board cells
     if (cell.boardX || cell.boardZ) {
       // Ghost board click: materialize the cell and apply tool
@@ -6273,6 +6620,15 @@
       applyAutoTool(x, z);
       return;
     }
+    if (selectedTool.gameMarker) {
+      if (typeof playSfxForTool === 'function') playSfxForTool(selectedTool);
+      if (selectedTool.gameMarker === 'questPoint') {
+        const variant = selectedTool.activeVariant;
+        if (variant && variant.objective) setGameObjective(variant.objective, { skipSave: true });
+      }
+      setGameMarker(selectedTool.gameMarker, x, z);
+      return;
+    }
     // Audible feedback for any user-initiated placement / erase. The
     // per-group rate limiter inside playSfx keeps drag-painting sane.
     if (typeof playSfxForTool === 'function') playSfxForTool(selectedTool);
@@ -6280,6 +6636,7 @@
     if (!world[x]) world[x] = [];
     const cell = world[x][z] || { terrain: 'grass', terrainFloors: 1, kind: null, floors: 1, buildingType: null, fenceSide: null, extras: [] };
     if (selectedTool.erase) {
+      if (clearGameMarkerAt(x, z)) return;
       // Peel decorations off first — tufts / fences sitting alongside
       // the main kind go before the main kind itself goes.
       if (cell.extras && cell.extras.length) {
@@ -6445,6 +6802,11 @@
   renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
 
   renderer.domElement.addEventListener('pointerdown', e => {
+    if (playMode.active) {
+      if (e.button === 0) tryPlayerAttack();
+      e.preventDefault();
+      return;
+    }
     if (e.pointerType === 'mouse' && e.button !== 0 && e.button !== 2) return;
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
     try { renderer.domElement.setPointerCapture(e.pointerId); } catch (_) {}
@@ -6473,6 +6835,7 @@
   });
 
   renderer.domElement.addEventListener('pointermove', e => {
+    if (playMode.active) return;
     if (activePointers.has(e.pointerId)) {
       const p = activePointers.get(e.pointerId);
       p.x = e.clientX; p.y = e.clientY;
@@ -6525,6 +6888,7 @@
   });
 
   renderer.domElement.addEventListener('pointerup', e => {
+    if (playMode.active) return;
     activePointers.delete(e.pointerId);
     renderer.domElement.classList.remove('dragging');
 
@@ -6563,6 +6927,7 @@
   });
 
   renderer.domElement.addEventListener('pointercancel', e => {
+    if (playMode.active) return;
     activePointers.delete(e.pointerId);
     renderer.domElement.classList.remove('dragging');
     if (activePointers.size === 0) {
@@ -6576,6 +6941,7 @@
 
   renderer.domElement.addEventListener('wheel', e => {
     e.preventDefault();
+    if (playMode.active) return;
     viewSize = Math.max(4, Math.min(14, viewSize + e.deltaY * 0.005));
     onResize();
   }, { passive: false });
@@ -6591,6 +6957,7 @@
     if (shortcutTargetBlocked(e.target)) return;
     // Never swallow OS-level keystrokes like Cmd+R (reload), Ctrl+R, Cmd+F, etc.
     if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (handlePlayKeyDown(e)) return;
     const k = e.key.toLowerCase();
     if (e.code === 'Space') {
       spaceDown = true;
@@ -6625,6 +6992,7 @@
   });
 
   window.addEventListener('keyup', e => {
+    if (handlePlayKeyUp(e)) return;
     if (e.code === 'Space') {
       spaceDown = false;
       e.preventDefault();
@@ -6664,7 +7032,7 @@
         }
       }
     }
-    const data = { v: STORAGE_VERSION, gridSize: GRID, cells, cameraMode, toolId: selectedTool && selectedTool.id };
+    const data = { v: STORAGE_VERSION, gridSize: GRID, cells, gameLayer: serializeGameLayer(), cameraMode, toolId: selectedTool && selectedTool.id };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url  = URL.createObjectURL(blob);
     const ts   = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
@@ -6737,6 +7105,7 @@
   function setHomeGridSize(n, opts) {
     const skipRebuild = !!(opts && opts.skipRebuild);
     if (!HOME_GRID_OPTIONS.includes(n) || n === GRID) return;
+    if (typeof exitPlayMode === 'function') exitPlayMode({ restoreCamera: false, silent: true });
 
     // Backup the full pre-resize state to localStorage so the user can
     // recover if a resize ever drops something we didn't preserve.
@@ -6896,6 +7265,7 @@
   }
 
   function doReset() {
+    if (typeof exitPlayMode === 'function') exitPlayMode({ restoreCamera: false, silent: true });
     loadInitialScene();
     resetCameraDefaults();
     if (typeof playSfx === 'function') playSfx('whoosh');
@@ -6927,6 +7297,7 @@
     });
   })();
   function doClear() {
+    if (typeof exitPlayMode === 'function') exitPlayMode({ restoreCamera: false, silent: true });
     if (typeof playSfx === 'function') playSfx('whoosh');
     const TILE_STAGGER = 0.022;
     for (let x = 0; x < GRID; x++)
@@ -6940,8 +7311,744 @@
           tileDelay: (x + z) * TILE_STAGGER,
           forceTile: true,
         });
+    clearGameLayer();
     if (typeof fireWebhook === 'function') fireWebhook('world.clear', {});
   }
+
+  // -------- play mode --------
+  const PLAY_PLAYER_MAX_HP = 6;
+  const PLAY_VILLAIN_MAX_HP = 4;
+  const PLAY_PLAYER_SPEED = 3.0;
+  const PLAY_VILLAIN_SPEED = 1.65;
+  const PLAY_VILLAIN_PATROL_SPEED = 0.85;
+  const PLAY_VILLAIN_GUARD_RADIUS = 5.5;
+  const PLAY_VILLAIN_WINDUP = 0.32;
+  const PLAY_INTERACT_RANGE = 0.62;
+  const PLAY_ATTACK_RANGE = 1.08;
+  const PLAY_VILLAIN_ATTACK_RANGE = 0.72;
+  const PLAY_PLAYER_RADIUS = 0.28;
+  const PLAY_BLOCKING_KINDS = new Set(['house', 'rock', 'fence']);
+  const playGroup = new THREE.Group();
+  playGroup.name = 'playMode';
+  playGroup.visible = false;
+  scene.add(playGroup);
+  const playKeys = new Set();
+  const playMode = {
+    active: false,
+    ended: false,
+    result: null,
+    time: 0,
+    attackPulse: 0,
+    objective: 'defeat_villain',
+    objectiveStatus: '',
+    collectedRelic: false,
+    gateUnlocked: false,
+    markers: {},
+    cameraBackup: null,
+    player: null,
+    villain: null,
+    playerMesh: null,
+    villainMesh: null,
+    attackMesh: null,
+  };
+
+  const playHud = {
+    root: document.getElementById('play-hud'),
+    title: document.getElementById('play-title'),
+    objective: document.getElementById('play-objective'),
+    hp: document.getElementById('play-health'),
+    hpBar: document.getElementById('play-health-bar'),
+    villainHp: document.getElementById('play-villain-health'),
+    villainBar: document.getElementById('play-villain-bar'),
+    toggle: document.getElementById('play-toggle'),
+    attack: document.getElementById('play-attack'),
+    reset: document.getElementById('play-reset'),
+    exit: document.getElementById('play-exit'),
+  };
+
+  function makePlayerPawn() {
+    const g = new THREE.Group();
+    g.name = 'playerPawn';
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.48, 0.28), M.playerTunic);
+    body.position.y = 0.30;
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), M.playerFace);
+    head.position.y = 0.64;
+    const hair = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.08, 0.18), M.playerHair);
+    hair.position.set(0, 0.76, -0.02);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.44, 0.045), M.playerBlade);
+    blade.position.set(0.25, 0.43, -0.16);
+    blade.rotation.z = -0.35;
+    const hilt = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.035, 0.035), M.playerHair);
+    hilt.position.set(0.20, 0.27, -0.11);
+    g.add(body, head, hair, blade, hilt);
+    return castReceive(g);
+  }
+
+  function makeVillainPawn() {
+    const g = new THREE.Group();
+    g.name = 'villainPawn';
+    const cloak = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.62, 5), M.villainCloak);
+    cloak.position.y = 0.34;
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), M.villainFace);
+    head.position.y = 0.72;
+    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.045, 0.05), M.villainCloak);
+    brow.position.set(0, 0.78, -0.13);
+    const eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.035, 0.02), M.villainEye);
+    eyeL.position.set(-0.055, 0.73, -0.16);
+    const eyeR = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.035, 0.02), M.villainEye);
+    eyeR.position.set(0.055, 0.73, -0.16);
+    const staff = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.70, 0.045), M.woodTrim);
+    staff.position.set(-0.25, 0.42, 0.02);
+    const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.08, 0), M.villainEye);
+    gem.position.set(-0.25, 0.82, 0.02);
+    g.add(cloak, head, brow, eyeL, eyeR, staff, gem);
+    return castReceive(g);
+  }
+
+  function makeAttackRing() {
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.58, 28), M.playAttack);
+    ring.name = 'attackRing';
+    ring.rotation.x = -Math.PI / 2;
+    ring.visible = false;
+    ring.renderOrder = 4;
+    return ring;
+  }
+
+  function clearPlayPieces() {
+    while (playGroup.children.length) {
+      const c = playGroup.children.pop();
+      playGroup.remove(c);
+      disposeGroup(c);
+    }
+    playMode.playerMesh = null;
+    playMode.villainMesh = null;
+    playMode.attackMesh = null;
+  }
+
+  function playInBounds(x, z) {
+    return x >= 0 && x < GRID && z >= 0 && z < GRID;
+  }
+
+  function playCell(x, z) {
+    if (!playInBounds(x, z) || !world[x]) return null;
+    return world[x][z] || null;
+  }
+
+  function playGridIndex(value) {
+    return Math.max(0, Math.min(GRID - 1, Math.round(value)));
+  }
+
+  function playIsBlockedCell(x, z) {
+    if (!playInBounds(x, z)) return true;
+    const c = playCell(x, z);
+    if (!c) return false;
+    if (c.terrain === 'water' && c.kind !== 'bridge') return true;
+    if (PLAY_BLOCKING_KINDS.has(c.kind)) return true;
+    if (Array.isArray(c.extras) && c.extras.some(extra => extra && extra.kind === 'fence')) return true;
+    return false;
+  }
+
+  function playCanStandAt(x, z) {
+    const r = PLAY_PLAYER_RADIUS;
+    const samples = [
+      [x, z],
+      [x - r, z - r],
+      [x + r, z - r],
+      [x - r, z + r],
+      [x + r, z + r],
+    ];
+    return samples.every(([sx, sz]) => !playIsBlockedCell(playGridIndex(sx), playGridIndex(sz)));
+  }
+
+  function playOpenCells() {
+    const cells = [];
+    for (let x = 0; x < GRID; x++) {
+      for (let z = 0; z < GRID; z++) {
+        if (!playIsBlockedCell(x, z) && playCanStandAt(x, z)) cells.push({ x, z });
+      }
+    }
+    return cells;
+  }
+
+  function playDistance(a, b) {
+    return Math.hypot(a.x - b.x, a.z - b.z);
+  }
+
+  function playRequiredMarkers(objective) {
+    const required = ['playerSpawn', 'villainSpawn'];
+    if (objective === 'collect_relic' || objective === 'unlock_gate') required.push('chest');
+    if (objective === 'unlock_gate') required.push('gate');
+    if (objective === 'escape') required.push('exit');
+    return required;
+  }
+
+  function clonePlayMarkers() {
+    const markers = {};
+    for (const type of GAME_MARKER_TYPES) {
+      const marker = gameLayer.markers[type];
+      if (marker) markers[type] = { x: marker.x, z: marker.z };
+    }
+    return markers;
+  }
+
+  function validateGameLayerForPlay() {
+    const objective = normalizeGameObjective(gameLayer.objective);
+    const markers = clonePlayMarkers();
+    const errors = [];
+    for (const type of playRequiredMarkers(objective)) {
+      if (!markers[type]) errors.push(GAME_MARKER_DEFS[type].label + ' marker is required.');
+    }
+    for (const [type, marker] of Object.entries(markers)) {
+      if (!playInBounds(marker.x, marker.z)) {
+        errors.push(GAME_MARKER_DEFS[type].label + ' marker is outside the current board.');
+        continue;
+      }
+      if (['playerSpawn', 'villainSpawn', 'chest', 'gate', 'npc', 'questPoint', 'exit'].includes(type) &&
+          !playCanStandAt(marker.x, marker.z)) {
+        errors.push(GAME_MARKER_DEFS[type].label + ' marker must be on a walkable tile.');
+      }
+    }
+    if (markers.playerSpawn && markers.villainSpawn &&
+        markers.playerSpawn.x === markers.villainSpawn.x &&
+        markers.playerSpawn.z === markers.villainSpawn.z) {
+      errors.push('Spawn and Villain markers need separate tiles.');
+    }
+    return { ok: errors.length === 0, errors, objective, markers };
+  }
+
+  function playBuildPatrolPoints(origin) {
+    const candidates = [
+      { x: origin.x, z: origin.z },
+      { x: origin.x + 2, z: origin.z },
+      { x: origin.x, z: origin.z + 2 },
+      { x: origin.x - 2, z: origin.z },
+      { x: origin.x, z: origin.z - 2 },
+      { x: origin.x + 1, z: origin.z + 1 },
+      { x: origin.x - 1, z: origin.z - 1 },
+    ];
+    const points = [];
+    for (const p of candidates) {
+      const x = Math.max(0, Math.min(GRID - 1, p.x));
+      const z = Math.max(0, Math.min(GRID - 1, p.z));
+      if (playCanStandAt(x, z) && !points.some(q => q.x === x && q.z === z)) points.push({ x, z });
+    }
+    return points.length ? points : [{ x: origin.x, z: origin.z }];
+  }
+
+  function playBuildSetup() {
+    const validation = validateGameLayerForPlay();
+    if (!validation.ok) return { errors: validation.errors };
+    return {
+      objective: validation.objective,
+      markers: validation.markers,
+      player: validation.markers.playerSpawn,
+      villain: validation.markers.villainSpawn,
+      patrolPoints: playBuildPatrolPoints(validation.markers.villainSpawn),
+    };
+  }
+
+  function playWorldPosition(entity) {
+    const pos = tilePos(entity.x, entity.z);
+    const gx = playGridIndex(entity.x);
+    const gz = playGridIndex(entity.z);
+    pos.y = TOP_H + terrainRiseAt(gx, gz) + 0.04;
+    return pos;
+  }
+
+  function playMoveEntity(entity, dx, dz) {
+    if (!dx && !dz) return;
+    const nx = Math.max(0, Math.min(GRID - 1, entity.x + dx));
+    if (playCanStandAt(nx, entity.z)) entity.x = nx;
+    const nz = Math.max(0, Math.min(GRID - 1, entity.z + dz));
+    if (playCanStandAt(entity.x, nz)) entity.z = nz;
+  }
+
+  function playPathStep(from, to) {
+    const start = { x: playGridIndex(from.x), z: playGridIndex(from.z) };
+    const goal = { x: playGridIndex(to.x), z: playGridIndex(to.z) };
+    if (start.x === goal.x && start.z === goal.z) return { x: to.x, z: to.z };
+    const key = (x, z) => x + ',' + z;
+    const queue = [start];
+    const prev = new Map([[key(start.x, start.z), null]]);
+    const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    let found = null;
+    for (let qi = 0; qi < queue.length; qi++) {
+      const cur = queue[qi];
+      if (cur.x === goal.x && cur.z === goal.z) { found = cur; break; }
+      for (const [dx, dz] of dirs) {
+        const nx = cur.x + dx;
+        const nz = cur.z + dz;
+        const nk = key(nx, nz);
+        if (prev.has(nk) || playIsBlockedCell(nx, nz) || !playCanStandAt(nx, nz)) continue;
+        prev.set(nk, cur);
+        queue.push({ x: nx, z: nz });
+      }
+    }
+    if (!found) return null;
+    let step = found;
+    let parent = prev.get(key(step.x, step.z));
+    while (parent && !(parent.x === start.x && parent.z === start.z)) {
+      step = parent;
+      parent = prev.get(key(step.x, step.z));
+    }
+    return { x: step.x, z: step.z };
+  }
+
+  function playHasLineOfSight(from, to) {
+    const steps = Math.max(2, Math.ceil(playDistance(from, to) * 4));
+    const sx = playGridIndex(from.x);
+    const sz = playGridIndex(from.z);
+    const gx = playGridIndex(to.x);
+    const gz = playGridIndex(to.z);
+    for (let i = 1; i < steps; i++) {
+      const t = i / steps;
+      const x = playGridIndex(from.x + (to.x - from.x) * t);
+      const z = playGridIndex(from.z + (to.z - from.z) * t);
+      if ((x === sx && z === sz) || (x === gx && z === gz)) continue;
+      if (playIsBlockedCell(x, z)) return false;
+    }
+    return true;
+  }
+
+  function playMoveToward(entity, destination, speed, dt) {
+    const step = playPathStep(entity, destination) || destination;
+    let dx = step.x - entity.x;
+    let dz = step.z - entity.z;
+    const d = Math.hypot(dx, dz);
+    if (d <= 0.001) return;
+    dx /= d;
+    dz /= d;
+    playMoveEntity(entity, dx * speed * dt, dz * speed * dt);
+  }
+
+  function playMoveAway(entity, threat, speed, dt) {
+    let dx = entity.x - threat.x;
+    let dz = entity.z - threat.z;
+    const d = Math.hypot(dx, dz) || 1;
+    dx /= d;
+    dz /= d;
+    playMoveEntity(entity, dx * speed * dt, dz * speed * dt);
+  }
+
+  function playComplete(result) {
+    if (playMode.ended) return;
+    playMode.ended = true;
+    playMode.result = result || 'won';
+    if (playMode.result === 'won' && typeof playSfx === 'function') playSfx('whoosh', 0.7);
+  }
+
+  function playDamagePlayer(amount) {
+    if (playMode.ended) return;
+    playMode.player.hp -= amount;
+    playMode.player.hitFlash = 0.16;
+    if (typeof playSfx === 'function') playSfx('knock', 0.45);
+    if (playMode.player.hp <= 0) {
+      playMode.player.hp = 0;
+      playComplete('lost');
+    }
+  }
+
+  function playMarkerReached(type) {
+    const marker = playMode.markers[type];
+    return !!marker && playDistance(playMode.player, marker) <= PLAY_INTERACT_RANGE;
+  }
+
+  function updatePlayObjective() {
+    if (playMode.ended) return;
+    const objective = playMode.objective;
+    if ((objective === 'collect_relic' || objective === 'unlock_gate') && !playMode.collectedRelic && playMarkerReached('chest')) {
+      playMode.collectedRelic = true;
+      if (typeof playSfx === 'function') playSfx('knock', 0.45);
+      if (objective === 'collect_relic') playComplete('won');
+    }
+    if (objective === 'unlock_gate' && playMode.collectedRelic && !playMode.gateUnlocked && playMarkerReached('gate')) {
+      playMode.gateUnlocked = true;
+      playComplete('won');
+    }
+    if (objective === 'escape' && playMarkerReached('exit')) {
+      playComplete('won');
+    }
+  }
+
+  function playObjectiveText() {
+    if (playMode.result === 'won') return 'Objective complete.';
+    if (playMode.result === 'lost') return 'Restart or return to the editor.';
+    if (playMode.objective === 'collect_relic') return playMode.collectedRelic ? 'Relic collected.' : 'Find the chest.';
+    if (playMode.objective === 'unlock_gate') return playMode.collectedRelic ? 'Bring the relic to the gate.' : 'Find the chest first.';
+    if (playMode.objective === 'escape') return 'Reach the exit.';
+    return 'Defeat the villain.';
+  }
+
+  function updateVillain(dt) {
+    const villain = playMode.villain;
+    const player = playMode.player;
+    if (!villain || villain.hp <= 0) return;
+    const dist = playDistance(villain, player);
+    const spawnDist = playDistance(villain, { x: villain.spawnX, z: villain.spawnZ });
+    const canSee = playHasLineOfSight(villain, player);
+    villain.windup = Math.max(0, villain.windup - dt);
+    if (villain.windup > 0) {
+      villain.state = 'windup';
+      return;
+    }
+    if (villain.pendingStrike) {
+      villain.pendingStrike = false;
+      if (dist <= PLAY_VILLAIN_ATTACK_RANGE + 0.08 && playHasLineOfSight(villain, player)) {
+        playDamagePlayer(1);
+      }
+      villain.cooldown = 0.85;
+      return;
+    }
+    if (villain.hp <= 1 && dist < 2.25) {
+      villain.state = 'retreat';
+      playMoveAway(villain, player, PLAY_VILLAIN_SPEED * 0.92, dt);
+      return;
+    }
+    if (dist <= PLAY_VILLAIN_ATTACK_RANGE && canSee && villain.cooldown <= 0) {
+      villain.state = 'windup';
+      villain.windup = PLAY_VILLAIN_WINDUP;
+      villain.pendingStrike = true;
+      return;
+    }
+    const playerNearGuard = playDistance(player, { x: villain.spawnX, z: villain.spawnZ }) <= PLAY_VILLAIN_GUARD_RADIUS + 1;
+    if (canSee && (dist <= PLAY_VILLAIN_GUARD_RADIUS || playerNearGuard || spawnDist <= PLAY_VILLAIN_GUARD_RADIUS)) {
+      villain.state = 'chase';
+      playMoveToward(villain, player, PLAY_VILLAIN_SPEED, dt);
+      return;
+    }
+    villain.state = 'patrol';
+    const patrol = villain.patrolPoints[villain.patrolIndex % villain.patrolPoints.length];
+    if (playDistance(villain, patrol) < 0.18) villain.patrolIndex = (villain.patrolIndex + 1) % villain.patrolPoints.length;
+    playMoveToward(villain, villain.patrolPoints[villain.patrolIndex], PLAY_VILLAIN_PATROL_SPEED, dt);
+  }
+
+  function syncPlayMeshes() {
+    if (!playMode.active || !playMode.player || !playMode.villain) return;
+    const playerPos = playWorldPosition(playMode.player);
+    const villainPos = playWorldPosition(playMode.villain);
+    if (playMode.playerMesh) {
+      playMode.playerMesh.position.copy(playerPos);
+      playMode.playerMesh.rotation.y = Math.atan2(playMode.player.dirX || 0, playMode.player.dirZ || -1);
+      const flash = playMode.player.hitFlash > 0 ? 1.08 : 1;
+      playMode.playerMesh.scale.setScalar(flash);
+    }
+    if (playMode.villainMesh) {
+      playMode.villainMesh.position.copy(villainPos);
+      playMode.villainMesh.visible = playMode.villain.hp > 0;
+      playMode.villainMesh.rotation.y = Math.atan2(playMode.player.x - playMode.villain.x, playMode.player.z - playMode.villain.z);
+      const flash = playMode.villain.hitFlash > 0 ? 1.10 : 1;
+      playMode.villainMesh.scale.setScalar(flash);
+    }
+    if (playMode.attackMesh) {
+      playMode.attackMesh.position.copy(playerPos);
+      playMode.attackMesh.position.y += 0.02;
+      playMode.attackMesh.visible = playMode.attackPulse > 0;
+      const s = 1 + (1 - Math.max(0, playMode.attackPulse) / 0.18) * 0.35;
+      playMode.attackMesh.scale.set(s, s, s);
+    }
+  }
+
+  function updatePlayHud() {
+    if (!playHud.root || !playMode.player || !playMode.villain) return;
+    const playerHp = Math.max(0, playMode.player.hp);
+    const villainHp = Math.max(0, playMode.villain.hp);
+    if (playHud.hp) playHud.hp.textContent = playerHp + '/' + PLAY_PLAYER_MAX_HP;
+    if (playHud.villainHp) playHud.villainHp.textContent = villainHp + '/' + PLAY_VILLAIN_MAX_HP;
+    if (playHud.hpBar) playHud.hpBar.style.width = (playerHp / PLAY_PLAYER_MAX_HP * 100).toFixed(0) + '%';
+    if (playHud.villainBar) playHud.villainBar.style.width = (villainHp / PLAY_VILLAIN_MAX_HP * 100).toFixed(0) + '%';
+    if (playHud.title) {
+      playHud.title.textContent = playMode.result === 'won' ? 'World Cleared' :
+        playMode.result === 'lost' ? 'Defeated' : 'Play Mode';
+    }
+    if (playHud.objective) {
+      playHud.objective.textContent = playObjectiveText();
+    }
+  }
+
+  function tryPlayerAttack() {
+    if (!playMode.active || playMode.ended || !playMode.player || !playMode.villain) return false;
+    if (playMode.player.cooldown > 0) return true;
+    playMode.player.cooldown = 0.38;
+    playMode.attackPulse = 0.18;
+    const hit = playDistance(playMode.player, playMode.villain) <= PLAY_ATTACK_RANGE;
+    if (hit && playMode.villain.hp > 0) {
+      playMode.villain.hp -= 1;
+      playMode.villain.hitFlash = 0.18;
+      if (typeof playSfx === 'function') playSfx('knock', 0.55);
+      if (playMode.villain.hp <= 0) {
+        playMode.villain.hp = 0;
+        playMode.villain.state = 'defeated';
+        if (playMode.objective === 'defeat_villain') playComplete('won');
+      }
+    } else if (typeof playSfx === 'function') {
+      playSfx('rustle', 0.38);
+    }
+    syncPlayMeshes();
+    updatePlayHud();
+    return true;
+  }
+
+  function tickPlayMode(dt) {
+    if (!playMode.active || !playMode.player || !playMode.villain) return;
+    playMode.time += dt;
+    playMode.player.cooldown = Math.max(0, playMode.player.cooldown - dt);
+    playMode.villain.cooldown = Math.max(0, playMode.villain.cooldown - dt);
+    playMode.player.hitFlash = Math.max(0, playMode.player.hitFlash - dt);
+    playMode.villain.hitFlash = Math.max(0, playMode.villain.hitFlash - dt);
+    playMode.attackPulse = Math.max(0, playMode.attackPulse - dt);
+
+    if (!playMode.ended) {
+      let vx = 0;
+      let vz = 0;
+      if (playKeys.has('a') || playKeys.has('arrowleft')) vx -= 1;
+      if (playKeys.has('d') || playKeys.has('arrowright')) vx += 1;
+      if (playKeys.has('w') || playKeys.has('arrowup')) vz -= 1;
+      if (playKeys.has('s') || playKeys.has('arrowdown')) vz += 1;
+      const len = Math.hypot(vx, vz);
+      if (len > 0) {
+        vx /= len;
+        vz /= len;
+        playMode.player.dirX = vx;
+        playMode.player.dirZ = vz;
+        playMoveEntity(playMode.player, vx * PLAY_PLAYER_SPEED * dt, vz * PLAY_PLAYER_SPEED * dt);
+      }
+
+      updateVillain(dt);
+      updatePlayObjective();
+    }
+
+    const pos = playWorldPosition(playMode.player);
+    target.x += (pos.x - target.x) * Math.min(1, dt * 8);
+    target.y += (0.12 - target.y) * Math.min(1, dt * 6);
+    target.z += (pos.z - target.z) * Math.min(1, dt * 8);
+    updateCamera();
+    syncPlayMeshes();
+    updatePlayHud();
+  }
+
+  function enterPlayMode(opts) {
+    const keepBackup = !!(opts && opts.keepBackup && playMode.cameraBackup);
+    const setup = playBuildSetup();
+    if (!setup || setup.errors) {
+      alert((setup && setup.errors && setup.errors.length) ? setup.errors.join('\n') : 'Add valid adventure markers before entering Play Mode.');
+      return false;
+    }
+    if (!keepBackup) {
+      playMode.cameraBackup = {
+        viewSize,
+        cameraMode,
+        azimuth,
+        polar,
+        target: target.clone(),
+      };
+    }
+    clearPlayPieces();
+    playMode.active = true;
+    playMode.ended = false;
+    playMode.result = null;
+    playMode.time = 0;
+    playMode.attackPulse = 0;
+    playMode.objective = setup.objective;
+    playMode.objectiveStatus = GAME_OBJECTIVE_LABELS[setup.objective] || 'Defeat the villain';
+    playMode.collectedRelic = false;
+    playMode.gateUnlocked = false;
+    playMode.markers = setup.markers;
+    playMode.player = {
+      x: setup.player.x,
+      z: setup.player.z,
+      hp: PLAY_PLAYER_MAX_HP,
+      cooldown: 0,
+      hitFlash: 0,
+      dirX: 0,
+      dirZ: -1,
+    };
+    playMode.villain = {
+      x: setup.villain.x,
+      z: setup.villain.z,
+      spawnX: setup.villain.x,
+      spawnZ: setup.villain.z,
+      hp: PLAY_VILLAIN_MAX_HP,
+      cooldown: 0.45,
+      hitFlash: 0,
+      state: 'patrol',
+      windup: 0,
+      pendingStrike: false,
+      patrolIndex: 0,
+      patrolPoints: setup.patrolPoints,
+    };
+    playMode.playerMesh = makePlayerPawn();
+    playMode.villainMesh = makeVillainPawn();
+    playMode.attackMesh = makeAttackRing();
+    playGroup.add(playMode.playerMesh, playMode.villainMesh, playMode.attackMesh);
+    playGroup.visible = true;
+    playKeys.clear();
+    homeTween = null;
+    viewSize = Math.max(4.6, Math.min(7.2, GRID * 0.45));
+    azimuth = DEFAULT_AZIMUTH;
+    polar = Math.PI * 0.30;
+    const playerPos = playWorldPosition(playMode.player);
+    target.set(playerPos.x, 0.12, playerPos.z);
+    setCameraMode(postProcessingEnabled ? 'ortho' : 'soft');
+    document.body.classList.add('play-mode');
+    hoverMesh.visible = false;
+    currentHover = null;
+    if (playHud.root) playHud.root.hidden = false;
+    if (playHud.toggle) {
+      playHud.toggle.classList.add('on');
+      playHud.toggle.setAttribute('data-tooltip', 'Return to editor');
+      playHud.toggle.setAttribute('aria-label', 'Return to editor');
+    }
+    syncPlayMeshes();
+    updatePlayHud();
+    if (typeof playSfx === 'function') playSfx('whoosh', 0.6);
+    return true;
+  }
+
+  function exitPlayMode(opts) {
+    if (!playMode.active && !playMode.cameraBackup) return;
+    const restoreCamera = !(opts && opts.restoreCamera === false);
+    const silent = !!(opts && opts.silent);
+    playMode.active = false;
+    playMode.ended = false;
+    playMode.result = null;
+    playKeys.clear();
+    playGroup.visible = false;
+    clearPlayPieces();
+    playMode.player = null;
+    playMode.villain = null;
+    playMode.markers = {};
+    playMode.objective = normalizeGameObjective(gameLayer.objective);
+    playMode.collectedRelic = false;
+    playMode.gateUnlocked = false;
+    document.body.classList.remove('play-mode');
+    if (playHud.root) playHud.root.hidden = true;
+    if (playHud.toggle) {
+      playHud.toggle.classList.remove('on');
+      playHud.toggle.setAttribute('data-tooltip', 'Play this world');
+      playHud.toggle.setAttribute('aria-label', 'Play this world');
+    }
+    if (restoreCamera && playMode.cameraBackup) {
+      const backup = playMode.cameraBackup;
+      viewSize = backup.viewSize;
+      azimuth = backup.azimuth;
+      polar = backup.polar;
+      target.copy(backup.target);
+      setCameraMode(backup.cameraMode);
+    }
+    playMode.cameraBackup = null;
+    if (!silent && typeof playSfx === 'function') playSfx('whoosh', 0.5);
+  }
+
+  function restartPlayMode() {
+    if (!playMode.active && !playMode.cameraBackup) return enterPlayMode();
+    return enterPlayMode({ keepBackup: true });
+  }
+
+  function handlePlayKeyDown(e) {
+    if (!playMode.active) return false;
+    const k = e.key.toLowerCase();
+    if (['w', 'a', 's', 'd', 'arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(k)) {
+      playKeys.add(k);
+      e.preventDefault();
+      return true;
+    }
+    if (e.code === 'Space') {
+      tryPlayerAttack();
+      e.preventDefault();
+      return true;
+    }
+    if (k === 'escape') {
+      exitPlayMode();
+      e.preventDefault();
+      return true;
+    }
+    if (k === 'r' && playMode.ended) {
+      restartPlayMode();
+      e.preventDefault();
+      return true;
+    }
+    return true;
+  }
+
+  function handlePlayKeyUp(e) {
+    if (!playMode.active) return false;
+    const k = e.key.toLowerCase();
+    if (playKeys.delete(k)) {
+      e.preventDefault();
+      return true;
+    }
+    return e.code === 'Space';
+  }
+
+  if (playHud.toggle) playHud.toggle.addEventListener('click', () => {
+    if (playMode.active) exitPlayMode();
+    else enterPlayMode();
+  });
+  if (playHud.attack) playHud.attack.addEventListener('click', tryPlayerAttack);
+  if (playHud.reset) playHud.reset.addEventListener('click', restartPlayMode);
+  if (playHud.exit) playHud.exit.addEventListener('click', () => exitPlayMode());
+
+  window.render_game_to_text = function renderGameToText() {
+    const openCount = playOpenCells().length;
+    const player = playMode.player ? {
+      x: Number(playMode.player.x.toFixed(2)),
+      z: Number(playMode.player.z.toFixed(2)),
+      hp: playMode.player.hp,
+    } : null;
+    const villain = playMode.villain ? {
+      x: Number(playMode.villain.x.toFixed(2)),
+      z: Number(playMode.villain.z.toFixed(2)),
+      hp: playMode.villain.hp,
+      state: playMode.villain.state || 'idle',
+      windup: Number((playMode.villain.windup || 0).toFixed(2)),
+    } : null;
+    const validation = validateGameLayerForPlay();
+    return JSON.stringify({
+      mode: playMode.active ? 'play' : 'editor',
+      result: playMode.result || (playMode.active ? 'active' : null),
+      gridSize: GRID,
+      coordinateSystem: 'grid coordinates, x right, z back, origin at front-left of current board',
+      gameLayer: serializeGameLayer(),
+      playValidation: validation.ok ? [] : validation.errors,
+      player,
+      villain,
+      blockedCells: GRID * GRID - openCount,
+      objective: playMode.active ? playMode.objective : normalizeGameObjective(gameLayer.objective),
+      objectiveText: playMode.active ? playObjectiveText() : (GAME_OBJECTIVE_LABELS[normalizeGameObjective(gameLayer.objective)] || 'Defeat the villain'),
+      collectedRelic: !!playMode.collectedRelic,
+      gateUnlocked: !!playMode.gateUnlocked,
+    }, null, 2);
+  };
+
+  window.advanceTime = function advanceTime(ms) {
+    const seconds = Math.max(0, (Number(ms) || 0) / 1000);
+    const step = 1 / 60;
+    let remaining = seconds;
+    while (remaining > 0) {
+      const dt = Math.min(step, remaining);
+      tickPlayMode(dt);
+      remaining -= dt;
+    }
+    renderScene();
+    return window.render_game_to_text();
+  };
+
+  window.__tinyworldPlay = {
+    enter: enterPlayMode,
+    exit: exitPlayMode,
+    restart: restartPlayMode,
+    attack: tryPlayerAttack,
+    state: () => playMode,
+  };
+
+  window.__tinyworldGameLayer = {
+    state: () => serializeGameLayer(),
+    setMarker: setGameMarker,
+    clearMarkerAt: clearGameMarkerAt,
+    clear: clearGameLayer,
+    setObjective: setGameObjective,
+    validate: validateGameLayerForPlay,
+  };
 
   // -------- render settings --------
   (function setupRenderSettings() {
@@ -7220,6 +8327,7 @@
   function playSfxForTool(tool) {
     if (!tool || tool.auto) return;
     if (tool.erase) { playSfx('whoosh'); return; }
+    if (tool.gameMarker) { playSfx('knock', 0.4); return; }
     if (tool.kind === 'house' || tool.kind === 'fence') { playSfx('knock'); return; }
     if (tool.kind || tool.terrain) { playSfx('rustle'); return; }
   }
@@ -7670,6 +8778,7 @@
       }
     }
     updateSmoke(dt);
+    tickPlayMode(dt);
 
     renderScene();
   }
@@ -7991,6 +9100,7 @@
       world: {
         v: STORAGE_VERSION,
         cells: snapshotCells(),
+        gameLayer: serializeGameLayer(),
       },
       batchSize: AUTO_BATCH_SIZE,
       refreshPolicy: 'The browser will reuse these suggestions locally for several Auto placements before asking again.',
@@ -8018,11 +9128,12 @@
     // We only need to reject obviously incompatible versions.
     if (data.v === undefined || data.v === null) data.v = STORAGE_VERSION;
     if (typeof data.v === 'string') data.v = parseInt(data.v, 10);
-    if (data.v !== 1 && data.v !== 2 && data.v !== 3 && data.v !== 4) return 'unsupported v: ' + data.v;
+    if (data.v !== 1 && data.v !== 2 && data.v !== 3 && data.v !== 4 && data.v !== 5) return 'unsupported v: ' + data.v;
     if (!Array.isArray(data.cells)) return 'cells must be an array';
+    const gridLimit = HOME_GRID_OPTIONS.includes(data.gridSize) ? data.gridSize : HOME_GRID_MAX;
     const okTerrain = new Set(['grass','path','dirt','water']);
     const okKind = new Set([null,'house','tree','fence','rock','hill','bridge','crop','corn','wheat','pumpkin','carrot','sunflower','tuft']);
-    const okBT = new Set([null,'cottage','manor','tower','skyscraper']);
+    const okBT = new Set([null,'cottage','manor','tower','turret','skyscraper']);
     const okFenceSide = new Set([null,'n','s','e','w','center-x','center-z']);
     const seen = new Set();
     for (let i = 0; i < data.cells.length; i++) {
@@ -8036,8 +9147,8 @@
       } else {
         return 'cells[' + i + '] not object';
       }
-      if (!Number.isInteger(x) || x < 0 || x > 7) return 'cells[' + i + '].x out of range';
-      if (!Number.isInteger(z) || z < 0 || z > 7) return 'cells[' + i + '].z out of range';
+      if (!Number.isInteger(x) || x < 0 || x >= gridLimit) return 'cells[' + i + '].x out of range';
+      if (!Number.isInteger(z) || z < 0 || z >= gridLimit) return 'cells[' + i + '].z out of range';
       const key = x + ',' + z;
       if (seen.has(key)) return 'duplicate cell at ' + key;
       seen.add(key);
@@ -8053,6 +9164,19 @@
       const fs = fenceSide === undefined ? null : fenceSide;
       if (!okFenceSide.has(fs)) return 'cells[' + i + '].fenceSide invalid: ' + fenceSide;
       if (fs && k !== 'fence') return 'cells[' + i + '].fenceSide only allowed on fence';
+    }
+    if (data.gameLayer !== undefined && data.gameLayer !== null) {
+      if (typeof data.gameLayer !== 'object' || Array.isArray(data.gameLayer)) return 'gameLayer must be an object';
+      const objective = data.gameLayer.objective === undefined ? 'defeat_villain' : data.gameLayer.objective;
+      if (!GAME_OBJECTIVES.includes(objective)) return 'gameLayer.objective invalid: ' + objective;
+      const markers = data.gameLayer.markers || {};
+      if (typeof markers !== 'object' || Array.isArray(markers)) return 'gameLayer.markers must be an object';
+      for (const [type, marker] of Object.entries(markers)) {
+        if (!GAME_MARKER_TYPES.includes(type)) return 'gameLayer marker invalid: ' + type;
+        if (!marker || typeof marker !== 'object' || Array.isArray(marker)) return 'gameLayer.' + type + ' must be an object';
+        if (!Number.isInteger(marker.x) || marker.x < 0 || marker.x >= gridLimit) return 'gameLayer.' + type + '.x out of range';
+        if (!Number.isInteger(marker.z) || marker.z < 0 || marker.z >= gridLimit) return 'gameLayer.' + type + '.z out of range';
+      }
     }
     return null;
   }
@@ -8155,7 +9279,7 @@
     }
     const okTerrain = new Set(['grass','path','dirt','water']);
     const okKind = new Set([null,'house','tree','fence','rock','hill','bridge','crop','corn','wheat','pumpkin','carrot','sunflower','tuft']);
-    const okBT = new Set([null,'cottage','manor','tower','skyscraper']);
+    const okBT = new Set([null,'cottage','manor','tower','turret','skyscraper']);
     let kind = data.kind === undefined ? null : data.kind;
     let terrain = data.terrain;
     let floors = data.floors === undefined ? 1 : data.floors;
@@ -8180,7 +9304,7 @@
   }
 
   function autoSnapshotSignature() {
-    return JSON.stringify({ v: STORAGE_VERSION, cells: snapshotCells() });
+    return JSON.stringify({ v: STORAGE_VERSION, cells: snapshotCells(), gameLayer: serializeGameLayer() });
   }
 
   function adaptAutoSuggestionToCell(action, x, z) {
@@ -8339,7 +9463,7 @@
   // reset) only write once. Versioned key — bump VERSION when the cell schema
   // changes so old saves don't blow up.
   const STORAGE_KEY = 'tinyworld:v1';
-  const STORAGE_VERSION = 4;
+  const STORAGE_VERSION = 5;
   let saveTimer = null;
   let suppressSave = false;
 
@@ -8375,6 +9499,7 @@
           v: STORAGE_VERSION,
           gridSize: GRID,
           cells,
+          gameLayer: serializeGameLayer(),
           cameraMode,
           toolId: selectedTool && selectedTool.id,
         }));
@@ -8393,7 +9518,7 @@
       console.warn('[applyState] rejected world:', err, data);
       return false;
     }
-    if (data.v !== 1 && data.v !== 2 && data.v !== 3 && data.v !== 4) return false;
+    if (data.v !== 1 && data.v !== 2 && data.v !== 3 && data.v !== 4 && data.v !== 5) return false;
 
     // Restore the saved home grid size before painting cells so the new
     // tiles are framed correctly and ghost boards land in the right
@@ -8485,6 +9610,7 @@
         if (world[x][z].kind === 'bridge') renderCellObject(x, z, { animate: false });
       }
     }
+    applyGameLayer(data.gameLayer, { skipSave: true });
 
     suppressSave = false;
 
@@ -8974,7 +10100,7 @@
       if (!userProfile) { alert('Please save your profile first.'); showTab('profile'); return; }
       const name = saveName.value.trim() || ('Build ' + new Date().toLocaleDateString());
       const cells = snapshotCells();
-      const data = { v: STORAGE_VERSION, gridSize: GRID, cells, cameraMode, toolId: selectedTool && selectedTool.id };
+      const data = { v: STORAGE_VERSION, gridSize: GRID, cells, gameLayer: serializeGameLayer(), cameraMode, toolId: selectedTool && selectedTool.id };
       await apiCall('/api/builds', 'POST', { name, data });
       saveName.value = '';
       loadBuilds();
