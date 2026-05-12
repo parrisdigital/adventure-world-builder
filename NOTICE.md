@@ -23,3 +23,8 @@ If package metadata in the upstream project differs from the root `LICENSE`, tre
 ## Source Availability
 
 Because this project is based on an AGPL-licensed work, public hosted modified versions should make their corresponding source code available.
+
+## Third-Party Runtime Assets
+
+- Three.js r128 is vendored in `vendor/three-r128.min.js` for reliable static hosting.
+- Three.js is licensed under the MIT License; see `vendor/three-r128.LICENSE`.

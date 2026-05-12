@@ -117,6 +117,8 @@ Adventure marker tools:
 
 The app is intentionally simple to run: it is still centered around a single HTML file with inline CSS and JavaScript using Three.js r128.
 
+Three.js r128 is vendored under `vendor/` so the deployed app does not depend on a third-party CDN at runtime.
+
 Important runtime structures:
 
 - `world[x][z]`: tile intent, including terrain, object kind, floors, building variant, fence side, extras, and local object transforms.
