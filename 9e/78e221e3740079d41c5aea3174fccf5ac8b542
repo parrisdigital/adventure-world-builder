@@ -1,0 +1,38 @@
+README.md
+  s_61d189c31ea8c5::t_324ab5b791dc09 52
+  s_61d189c31ea8c5::t_814edf9ed67e86 83-84
+scripts/smoke-play-mode.mjs
+  s_61d189c31ea8c5::t_743e75514edb5e 204-213,224-225,234,242-245
+NOTICE.md
+  s_61d189c31ea8c5::t_263e5f4bbf1b6e 30
+docs/theme-pack-execution-plan.md
+  s_61d189c31ea8c5::t_0adf593d6f43bc 453
+  s_61d189c31ea8c5::t_dca7d3fb21ca22 441-452,454-512,524-525,527-535
+  s_61d189c31ea8c5::t_0d8c2b23f01da2 10,16-61,86-139
+  s_61d189c31ea8c5::t_bb7d9fd8360f7f 141-180
+tiny-world-builder.html
+  s_61d189c31ea8c5::t_1c25a47b29463b 7908-7909
+  s_61d189c31ea8c5::t_2e9a1e2c1de845 11374
+  s_61d189c31ea8c5::t_b3a3729ee99ee8 11466,11469,11471,11492-11503
+  s_61d189c31ea8c5::t_8c8cde1b2bb661 7897-7902
+  s_61d189c31ea8c5::t_a9e51e15b36a4a 1700
+  s_61d189c31ea8c5::t_b74de32f1da641 11255-11276
+world.schema.json
+  s_61d189c31ea8c5::t_c166a096677d78 116-137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "9e78e221e3740079d41c5aea3174fccf5ac8b542",
+  "prompts": {},
+  "sessions": {
+    "s_61d189c31ea8c5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e192d-da87-7a23-a27d-cf3ad066e4df",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Parris Digital <parrisdigital@gmail.com>"
+    }
+  }
+}
