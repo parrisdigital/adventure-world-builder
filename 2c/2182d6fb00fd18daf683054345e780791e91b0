@@ -1,0 +1,25 @@
+tiny-world-builder.html
+  s_61d189c31ea8c5::t_bebd50430bcb35 1729-1736
+auth.js
+  s_61d189c31ea8c5::t_18bb7c13fd6bab 1-5
+progress.md
+  s_61d189c31ea8c5::t_c624de5a57c47f 38
+scripts/smoke-play-mode.mjs
+  s_61d189c31ea8c5::t_e6e9fe60f1f127 2,12-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "2c2182d6fb00fd18daf683054345e780791e91b0",
+  "prompts": {},
+  "sessions": {
+    "s_61d189c31ea8c5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e192d-da87-7a23-a27d-cf3ad066e4df",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Parris Digital <parrisdigital@gmail.com>"
+    }
+  }
+}
