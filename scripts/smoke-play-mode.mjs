@@ -279,9 +279,20 @@ async function main() {
       throw new Error('Tactics metadata missing from play state: ' + JSON.stringify(defeatEntered.state));
     }
     const tacticsActions = await evaluate(`(() => {
+      const spriteState = () => {
+        const actor = window.__tinyworldPlay.state().playerMesh?.userData?.spriteActor;
+        const image = actor?.material?.map?.image;
+        return {
+          action: actor?.action || '',
+          direction: actor?.direction || '',
+          assetPath: actor?.assetPath || '',
+          src: image?.currentSrc || image?.src || '',
+        };
+      };
       const play = window.__tinyworldPlay.state();
       const movedOk = window.__tinyworldPlay.moveTo(0, 6);
       const moved = JSON.parse(window.render_game_to_text());
+      const movedSprite = spriteState();
       window.advanceTime(320);
       const movedResolved = JSON.parse(window.render_game_to_text());
       window.__tinyworldPlay.attack();
@@ -294,9 +305,11 @@ async function main() {
       backProbe.player.renderZ = 6;
       const moveBackOk = window.__tinyworldPlay.moveTo(0, 7);
       const moveBack = JSON.parse(window.render_game_to_text());
+      const moveBackSprite = spriteState();
       window.__tinyworldPlay.restart();
       const moveFacingOk = window.__tinyworldPlay.moveTo(2, 7);
       const moveRight = JSON.parse(window.render_game_to_text());
+      const moveRightSprite = spriteState();
       window.advanceTime(500);
       const moveRightResolved = JSON.parse(window.render_game_to_text());
       window.__tinyworldPlay.restart();
@@ -342,12 +355,15 @@ async function main() {
       window.__tinyworldPlay.endTurn();
       window.advanceTime(500);
       const enemyResolved = JSON.parse(window.render_game_to_text());
-      return { movedOk, moved, movedResolved, preview, moveBackOk, moveBack, moveFacingOk, moveRight, moveRightResolved, left, right, dashSelected, dashMovedOk, dashMoving, dashed, guarded, hpBeforeEnemy, enemyResolved };
+      return { movedOk, moved, movedSprite, movedResolved, preview, moveBackOk, moveBack, moveBackSprite, moveFacingOk, moveRight, moveRightSprite, moveRightResolved, left, right, dashSelected, dashMovedOk, dashMoving, dashed, guarded, hpBeforeEnemy, enemyResolved };
     })()`);
     if (!tacticsActions.movedOk ||
         tacticsActions.moved.player.x !== 0 ||
         tacticsActions.moved.player.z !== 6 ||
-        tacticsActions.moved.player.facing !== 'front' ||
+        tacticsActions.moved.player.facing !== 'back' ||
+        tacticsActions.movedSprite.action !== 'move' ||
+        tacticsActions.movedSprite.direction !== 'back' ||
+        tacticsActions.movedSprite.assetPath !== 'hero/move-back.png' ||
         !tacticsActions.moved.player.moving ||
         tacticsActions.moved.player.pathLength < 2 ||
         tacticsActions.moved.activePath.length < 2 ||
@@ -358,10 +374,13 @@ async function main() {
         tacticsActions.preview.selectedAction !== 'slash' ||
         tacticsActions.preview.attackTiles <= 0 ||
         !tacticsActions.moveBackOk ||
-        tacticsActions.moveBack.player.facing !== 'back' ||
+        tacticsActions.moveBack.player.facing !== 'front' ||
+        tacticsActions.moveBackSprite.direction !== 'front' ||
         !tacticsActions.moveFacingOk ||
         !tacticsActions.moveRight.player.moving ||
         tacticsActions.moveRight.player.facing !== 'right' ||
+        tacticsActions.moveRightSprite.direction !== 'right' ||
+        tacticsActions.moveRightSprite.assetPath !== 'hero/move-right.png' ||
         tacticsActions.moveRight.activePath.length < 2 ||
         tacticsActions.moveRightResolved.player.moving ||
         tacticsActions.left.player.facing !== 'left' ||

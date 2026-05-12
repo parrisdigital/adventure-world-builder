@@ -26,15 +26,17 @@ Because this project is based on an AGPL-licensed work, public hosted modified v
 
 ## Project Concept And Sprite Assets
 
-- Character/action and left/right turnaround concept sheets are stored in `assets/concepts/`.
+- Character/action, turnaround, and true-direction concept sheets are stored in `assets/concepts/`.
 - Playable transparent sprites are extracted into `assets/sprites/` and indexed by `assets/sprites/manifest.json`.
 - The sprite extraction/validation scripts are part of this fork and are used to keep runtime characters complete, padded, and free of cropped body or weapon fragments.
+- The direction sheet is used for true back-facing character frames when characters walk up the visible board.
 - The older procedural character pieces remain only as runtime fallbacks while sprite textures load or if a sprite asset fails.
 
 ## Theme Pack Assets
 
 - Theme pack contracts are stored in `assets/themes/`.
 - The initial supported theme ids are `classic`, `japan`, `china`, and `city`.
+- Theme-specific character and object packs should preserve the same manifest contract while changing outfits, structures, roads, homes, props, and villains to match the chosen world style.
 
 ## Third-Party Runtime Assets
 

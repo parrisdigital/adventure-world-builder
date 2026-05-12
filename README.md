@@ -48,6 +48,7 @@ Character concept sheets live in `assets/concepts/`:
 
 - `character-action-sheet.png`
 - `character-turnaround-sheet.png`
+- `character-direction-sheet.png`
 
 Playable sprite assets live in `assets/sprites/` and are generated from the concept sheets with:
 
@@ -55,7 +56,7 @@ Playable sprite assets live in `assets/sprites/` and are generated from the conc
 npm run sprites:extract
 ```
 
-The live game uses manifest-backed transparent Three.js sprites for the hero, villain, NPCs, and chest, with the older procedural pieces kept as runtime fallback while image textures load. Hero and villain frames switch by action and facing direction: idle, move, dash, slash, guard, hit, villain attack, defeated, and chest open/closed/relic states.
+The live game uses manifest-backed transparent Three.js sprites for the hero, villain, NPCs, and chest, with the older procedural pieces kept as runtime fallback while image textures load. Hero and villain frames switch by action and facing direction: idle, move, dash, slash, guard, hit, villain attack, defeated, and chest open/closed/relic states. Movement uses screen-space board direction, so walking up the visible grid selects the back-facing character frame instead of reusing a front or side pose.
 
 Sprite quality is checked with:
 
@@ -63,7 +64,7 @@ Sprite quality is checked with:
 npm run sprites:validate
 ```
 
-That validation enforces transparent edge padding and catches large detached frame-edge fragments, so action sprites do not ship with cropped heads, swords, slash arcs, or partial bodies from the source sheets.
+That validation enforces transparent edge padding and catches large detached frame-edge fragments, so action sprites do not ship with cropped heads, swords, slash arcs, or partial bodies from the source sheets. The extraction pipeline also restores pale weapon details that are easy to mistake for the concept-sheet background.
 
 ## World Themes
 
@@ -74,7 +75,7 @@ Saved worlds include a `worldTheme` field. The first supported themes are:
 - `china`
 - `city`
 
-The Adventure panel includes a world style selector. Applying a theme changes the active tool palette, converting a world maps compatible objects to theme-specific variants, and starting a new themed world loads a preset board. The Japanese pack is playable now with sakura, bamboo, stone lanterns, torii gates, pagodas, temple halls, and watchtowers. China and City are scaffolded as theme packs and support conversion/preset contracts for further asset expansion.
+The Adventure panel includes a world style selector. Applying a theme changes the active tool palette, converting a world maps compatible objects to theme-specific variants, and starting a new themed world loads a preset board. The Japanese pack is playable now with sakura, bamboo, stone lanterns, torii gates, pagodas, temple halls, and watchtowers. China and City are scaffolded as theme packs and support conversion/preset contracts for further asset expansion. Future character packs should be theme-specific: Japan should use appropriate local outfits and villains, City should use urban civilians/guards/villains, and each theme should ship matching terrain, homes, props, roads, and encounter objects rather than recoloring the classic set.
 
 ## Current Objectives
 

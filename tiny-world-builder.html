@@ -5030,6 +5030,7 @@
       role,
       action: '',
       direction: '',
+      assetPath: '',
       material,
       sprite,
       fallback: fallback || null,
@@ -5048,6 +5049,7 @@
     if (state.action === action && state.direction === normalizedDirection) return true;
     state.action = action;
     state.direction = normalizedDirection;
+    state.assetPath = assetPath;
     const texture = loadSpriteTexture(assetPath, tex => {
       if (state.material.map !== tex) return;
       state.sprite.visible = true;
@@ -5067,20 +5069,20 @@
   function makeHeroCharacter(opts) {
     opts = opts || {};
     const fallback = makeProceduralHeroCharacter({ name: 'heroFallback' });
-    return makeSpriteActor('hero', 'idle', Object.assign({ direction: 'front', spriteW: 1.05, spriteH: 1.05, shadowRadius: 0.26 }, opts), fallback);
+    return makeSpriteActor('hero', 'idle', Object.assign({ direction: 'front', spriteW: 0.88, spriteH: 0.88, shadowRadius: 0.23 }, opts), fallback);
   }
 
   function makeVillainCharacter(opts) {
     opts = opts || {};
     const fallback = makeProceduralVillainCharacter({ name: 'villainFallback' });
-    return makeSpriteActor('villain', 'idle', Object.assign({ direction: 'front', spriteW: 1.08, spriteH: 1.08, shadowRadius: 0.28 }, opts), fallback);
+    return makeSpriteActor('villain', 'idle', Object.assign({ direction: 'front', spriteW: 0.90, spriteH: 0.90, shadowRadius: 0.24 }, opts), fallback);
   }
 
   function makeNpcCharacter(variant, opts) {
     opts = opts || {};
     const action = ['farmer', 'guard', 'merchant'].includes(variant) ? variant : 'villager';
     const fallback = makeProceduralNpcCharacter(variant, { name: 'npcFallback' });
-    return makeSpriteActor('npc', action, Object.assign({ direction: 'front', spriteW: 1.02, spriteH: 1.02, shadowRadius: 0.25 }, opts), fallback);
+    return makeSpriteActor('npc', action, Object.assign({ direction: 'front', spriteW: 1.10, spriteH: 1.10, shadowRadius: 0.24 }, opts), fallback);
   }
 
   function makeTreasureChest(opened, relic) {
@@ -9116,6 +9118,8 @@
     entity.action = action || 'move';
     entity.movePhase = (entity.movePhase || 0) + 0.5;
     playFaceVisualToward(entity, next);
+    entity.moveFacing = entity.facing;
+    entity.finalMoveFacing = entity.facing;
     playMode.activePath = cleanPath;
     playMode.activePathAction = action || 'move';
     renderTacticsOverlay();
@@ -9124,6 +9128,7 @@
 
   function playFinishEntityMovement(entity) {
     if (!entity) return;
+    if (entity.finalMoveFacing || entity.moveFacing) entity.facing = entity.finalMoveFacing || entity.moveFacing;
     entity.renderX = entity.x;
     entity.renderZ = entity.z;
     entity.movePath = null;
@@ -9131,6 +9136,8 @@
     entity.moveProgress = 0;
     entity.moveFrom = null;
     entity.moveTo = null;
+    entity.moveFacing = null;
+    entity.finalMoveFacing = null;
     if (entity.action === 'move' || entity.action === 'retreat') entity.action = 'idle';
   }
 
@@ -9151,12 +9158,14 @@
       entity.moveFrom = { x: entity.renderX, z: entity.renderZ };
       entity.moveTo = entity.movePath[entity.movePathIndex];
       playFaceVisualToward(entity, entity.moveTo);
+      entity.moveFacing = entity.facing;
+      entity.finalMoveFacing = entity.facing;
     }
     if (playEntityIsMoving(entity)) {
       const t = PLAY_TILE_EASE(Math.max(0, Math.min(1, entity.moveProgress)));
       entity.renderX = entity.moveFrom.x + (entity.moveTo.x - entity.moveFrom.x) * t;
       entity.renderZ = entity.moveFrom.z + (entity.moveTo.z - entity.moveFrom.z) * t;
-      playFaceVisualToward(entity, entity.moveTo);
+      if (entity.moveFacing) entity.facing = entity.moveFacing;
     }
     return false;
   }
@@ -9370,7 +9379,7 @@
     if (d <= 0.001) return;
     entity.dirX = dx / d;
     entity.dirZ = dz / d;
-    entity.facing = playDirectionFromDelta(dx, dz, entity.facing);
+    entity.facing = playDirectionFromBoardPoints(entity.x, entity.z, target.x, target.z, entity.facing);
   }
 
   function playFaceVisualToward(entity, target) {
@@ -9383,7 +9392,7 @@
     if (d <= 0.001) return;
     entity.dirX = dx / d;
     entity.dirZ = dz / d;
-    entity.facing = playDirectionFromDelta(dx, dz, entity.facing);
+    entity.facing = playDirectionFromBoardPoints(ox, oz, target.x, target.z, entity.facing);
   }
 
   function playDirectionFromDelta(dx, dz, fallback) {
@@ -9392,13 +9401,31 @@
     return dz > 0 ? 'back' : 'front';
   }
 
+  function playDirectionFromBoardPoints(fromX, fromZ, toX, toZ, fallback) {
+    const from = tilePos(fromX, fromZ);
+    const to = tilePos(toX, toZ);
+    from.y = 0.34;
+    to.y = 0.34;
+    from.project(camera);
+    to.project(camera);
+    const sx = to.x - from.x;
+    const sy = to.y - from.y;
+    if (Math.hypot(sx, sy) > 0.001) {
+      if (Math.abs(sx) >= Math.abs(sy)) return sx < 0 ? 'left' : 'right';
+      return sy > 0 ? 'back' : 'front';
+    }
+    return playDirectionFromDelta(toX - fromX, toZ - fromZ, fallback);
+  }
+
   function playEntityFacingAngle(entity, fallbackTarget) {
+    if (playEntityIsMoving(entity) && entity.moveFacing) return Math.atan2(entity.dirX || 0, entity.dirZ || -1);
     if (playEntityIsMoving(entity) && entity.moveTo) playFaceVisualToward(entity, entity.moveTo);
     else if (fallbackTarget) playFaceToward(entity, fallbackTarget);
     return Math.atan2(entity.dirX || 0, entity.dirZ || -1);
   }
 
   function playEntityDirection(entity, fallbackTarget) {
+    if (playEntityIsMoving(entity) && entity.moveFacing) return entity.moveFacing;
     if (playEntityIsMoving(entity) && entity.moveTo) playFaceVisualToward(entity, entity.moveTo);
     else if (fallbackTarget) playFaceToward(entity, fallbackTarget);
     if (entity && entity.facing) return entity.facing;
