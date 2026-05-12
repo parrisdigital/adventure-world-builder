@@ -1726,7 +1726,14 @@
         const local = u.searchParams.has('dev') || location.protocol === 'file:' ||
           ['localhost', '127.0.0.1', '0.0.0.0'].includes(location.hostname) ||
           location.hostname.endsWith('.local');
-        if (!local) document.write('<script src="auth.js"><\\/script>');
+        if (!local) {
+          const authScript = document.createElement('script');
+          authScript.src = 'auth.js';
+          authScript.async = false;
+          authScript.dataset.optionalAuth = 'true';
+          authScript.onerror = () => authScript.remove();
+          document.head.appendChild(authScript);
+        }
       } catch (_) {}
     })();
   </script>

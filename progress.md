@@ -35,3 +35,4 @@ Current prompt: Add Adventure UX and objective gameplay polish: Adventure Panel,
 - Added Vercel rewrites for `/` and `/app`, an in-app Credits and License modal, and standalone `NOTICE.md` attribution/license notes for release readiness.
 - Corrected authorship language so Adventure World Builder is presented as a Parris Digital project while crediting Tiny World Builder/Jason Kneen as the original upstream foundation.
 - Vendored Three.js r128 locally after the deployed page failed to boot when the external CDN script did not define `window.THREE`.
+- Fixed the production blank-map boot issue by replacing the optional auth `document.write()` loader, adding an `auth.js` placeholder, and guarding the smoke test against script-tag swallowing.

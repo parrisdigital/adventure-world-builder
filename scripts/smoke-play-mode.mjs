@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +9,14 @@ const repoRoot = path.resolve(__dirname, '..');
 const port = Number(process.env.TINYWORLD_PORT || 4173);
 const debugPort = Number(process.env.TINYWORLD_DEBUG_PORT || 9223);
 const url = `http://127.0.0.1:${port}/tiny-world-builder.html`;
+const appHtml = readFileSync(path.join(repoRoot, 'tiny-world-builder.html'), 'utf8');
+
+if (appHtml.includes('document.write')) {
+  throw new Error('Optional auth loading must not use document.write; it can swallow following script tags in production.');
+}
+if (!appHtml.includes('vendor/three-r128.min.js')) {
+  throw new Error('The app must load the vendored Three.js runtime for reliable static hosting.');
+}
 
 function findChrome() {
   const candidates = [
