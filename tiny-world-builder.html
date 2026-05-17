@@ -9041,7 +9041,7 @@
 
   function renderTacticsOverlay() {
     clearTacticsOverlay();
-    const actor = getCurrentActor();
+    let actor = getCurrentActor();
     if (!playMode.active || playMode.ended || !actor) {
       playOverlayGroup.visible = false;
       return;
@@ -9059,7 +9059,7 @@
     if (playMode.turn !== 'player' || playHasActiveMovement()) {
       return;
     }
-    const actor = getCurrentActor() || playMode.player;
+    actor = getCurrentActor() || playMode.player;
     const action = playMode.selectedAction || 'move';
     let cells = [];
     let mat = M.playReachable;
@@ -10399,7 +10399,7 @@
   function updatePlayHud() {
     if (!playHud.root) return;
 
-    const actor = getCurrentActor() || playMode.player;
+    let actor = getCurrentActor() || playMode.player;
     if (!actor) return;
 
     // Show the currently selected actor's HP (multi-unit aware)
@@ -10444,7 +10444,6 @@
     }
 
     if (playHud.style) {
-      const actor = getCurrentActor() || playMode.player;
       const style = actor.fightingStyle || actor.name || 'Unit';
       const speed = (actor.moveSpeed || PLAY_PLAYER_SPEED).toFixed(2).replace(/\.00$/, '');
       const actionLabel = playHasActiveMovement() ? 'Moving through path' :
@@ -10457,7 +10456,6 @@
       playHud.style.textContent = styleText;
     }
     if (playHud.turn) {
-      const actor = getCurrentActor() || playMode.player;
       let turnText = playMode.turn === 'enemy'
         ? 'Enemy Turn · thinking'
         : 'Player Turn · AP ' + playMode.playerAP + '/' + PLAY_TACTICS_MAX_AP;
@@ -10469,7 +10467,6 @@
       playHud.turn.textContent = playMode.result ? '' : turnText;
     }
     if (playHud.attack) {
-      const actor = getCurrentActor() || playMode.player;
       const spec = getActorAttackSpec(actor);
       const cost = spec.cost || 1;
       const onCooldown = (actor.cooldown || 0) > 0;
@@ -10483,12 +10480,10 @@
       if (playHud.attack) playHud.attack.textContent = attackLabel;
     }
     if (playHud.dash) {
-      const actor = getCurrentActor() || playMode.player;
       playHud.dash.disabled = playMode.ended || playMode.turn !== 'player' || playHasActiveMovement() || playMode.playerAP < PLAY_PLAYER_ACTIONS.dash.cost || (actor.dashCooldown || 0) > 0;
       playHud.dash.classList.toggle('active', playMode.selectedAction === 'dash' || (actor.dashTimer || 0) > 0);
     }
     if (playHud.guard) {
-      const actor = getCurrentActor() || playMode.player;
       const job = TACTICAL_JOBS[actor.job] || {};
       const hasSpecial = !!job.special;
       const label = hasSpecial ? (job.special === 'volley' ? 'Volley' :
