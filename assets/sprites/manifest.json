@@ -125,5 +125,81 @@
         "default": "chest/relic.png"
       }
     }
+  },
+  "themes": {
+    "japan": {
+      "hero": {
+        "idle": {
+          "front": "japan/hero/idle-front.png",
+          "right": "japan/hero/idle-right.png",
+          "back": "japan/hero/idle-back.png",
+          "left": "japan/hero/idle-left.png"
+        },
+        "move": {
+          "front": "japan/hero/move-front.png",
+          "right": "japan/hero/move-right.png",
+          "back": "japan/hero/move-back.png",
+          "left": "japan/hero/move-left.png"
+        },
+        "slash": {
+          "front": "japan/hero/slash-front.png",
+          "right": "japan/hero/slash-right.png",
+          "back": "japan/hero/slash-back.png",
+          "left": "japan/hero/slash-left.png"
+        },
+        "guard": {
+          "front": "japan/hero/guard-front.png",
+          "right": "japan/hero/guard-right.png",
+          "back": "japan/hero/guard-back.png",
+          "left": "japan/hero/guard-left.png"
+        },
+        "hit": {
+          "front": "japan/hero/hit-front.png",
+          "right": "japan/hero/hit-right.png",
+          "back": "japan/hero/hit-back.png",
+          "left": "japan/hero/hit-left.png"
+        },
+        "defeated": {
+          "front": "japan/hero/defeated-front.png",
+          "right": "japan/hero/defeated-right.png"
+        }
+      },
+      "villain": {
+        "idle": {
+          "front": "japan/villain/idle-front.png",
+          "right": "japan/villain/idle-right.png",
+          "back": "japan/villain/idle-back.png",
+          "left": "japan/villain/idle-left.png"
+        },
+        "move": {
+          "front": "japan/villain/move-front.png",
+          "right": "japan/villain/move-right.png",
+          "back": "japan/villain/move-back.png",
+          "left": "japan/villain/move-left.png"
+        },
+        "attack": {
+          "front": "japan/villain/attack-front.png",
+          "right": "japan/villain/attack-right.png",
+          "back": "japan/villain/attack-back.png",
+          "left": "japan/villain/attack-left.png"
+        },
+        "guard": {
+          "front": "japan/villain/guard-front.png",
+          "right": "japan/villain/guard-right.png",
+          "back": "japan/villain/guard-back.png",
+          "left": "japan/villain/guard-left.png"
+        },
+        "hit": {
+          "front": "japan/villain/hit-front.png",
+          "right": "japan/villain/hit-right.png",
+          "back": "japan/villain/hit-back.png",
+          "left": "japan/villain/hit-left.png"
+        },
+        "defeated": {
+          "front": "japan/villain/defeated-front.png",
+          "right": "japan/villain/defeated-right.png"
+        }
+      }
+    }
   }
 }

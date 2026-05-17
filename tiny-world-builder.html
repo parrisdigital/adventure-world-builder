@@ -1732,6 +1732,9 @@
     <div class="adventure-errors" id="adventure-errors"></div>
     <div class="adventure-actions">
       <button class="btn" id="adventure-play" type="button">Play Adventure</button>
+      <button class="btn" id="adventure-skirmish" type="button" title="Instant 3v2 tactical battle">Skirmish</button>
+      <button class="btn" id="adventure-save" type="button" title="Save current board">Save</button>
+      <button class="btn" id="adventure-load" type="button" title="Load saved board">Load</button>
     </div>
   </div>
 
@@ -1760,6 +1763,9 @@
       <button class="btn" id="play-guard" type="button">Guard</button>
       <button class="btn" id="play-end-turn" type="button">End Turn</button>
       <button class="btn" id="play-reset" type="button">Restart</button>
+      <button class="btn" id="play-new-skirmish" type="button" style="display:none">New Skirmish</button>
+      <button class="btn" id="play-save-skirmish" type="button" style="display:none">Save</button>
+      <button class="btn" id="play-load-skirmish" type="button" style="display:none">Load Last</button>
       <button class="btn" id="play-exit" type="button">Editor</button>
     </div>
   </div>
@@ -1797,8 +1803,8 @@
   // the home area and rebuilds them in full colour.
   const HOME_GRID_DEFAULT = 8;
   const HOME_GRID_MIN = 8;
-  const HOME_GRID_MAX = 20;
-  const HOME_GRID_OPTIONS = [8, 12, 16, 20];
+  const HOME_GRID_MAX = 32;                    // increased for larger tactical battles
+  const HOME_GRID_OPTIONS = [8, 12, 16, 20, 24, 28, 32];
   let GRID = HOME_GRID_DEFAULT;
   try {
     const stored = parseInt(localStorage.getItem('tinyworld:home-grid') || '', 10);
@@ -2616,6 +2622,19 @@
 
   // -------- object factories --------
   function makeTree() {
+    // Japan theme uses sakura/bamboo for the generic "Tree" tool
+    if (typeof worldTheme === 'string' && worldTheme === 'japan') {
+      return Math.random() < 0.6 ? makeSakuraTree() : makeBambooCluster();
+    }
+    // City theme — modern street trees / planters (lighter vegetation)
+    if (typeof worldTheme === 'string' && worldTheme === 'city') {
+      return makeCityStreetTree();
+    }
+    // Grassland theme — classic pine / fir trees
+    if (typeof worldTheme === 'string' && worldTheme === 'grassland') {
+      return makePineTree();
+    }
+
     const g = new THREE.Group();
 
     const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.5, 0.18), M.trunk);
@@ -2687,6 +2706,136 @@
     return g;
   }
 
+  // Simple modern street tree / planter for City theme
+  function makeCityStreetTree() {
+    const g = new THREE.Group();
+    const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.55, 0.14), M.trunk);
+    trunk.position.y = 0.28;
+    g.add(trunk);
+    const crown = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.68, 0.72), M.leaf);
+    crown.position.y = 0.82;
+    g.add(crown);
+    // Concrete planter base
+    const planter = new THREE.Mesh(roundedBox(0.48, 0.18, 0.48, 0.02), M.rock);
+    planter.position.y = 0.09;
+    g.add(planter);
+    g.userData = { kind: 'tree', swayPhase: Math.random() * Math.PI * 2 };
+    castReceive(g);
+    return g;
+  }
+
+  // Classic pine / fir tree for Grassland theme
+  function makePineTree() {
+    const g = new THREE.Group();
+    const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.52, 0.16), M.trunk);
+    trunk.position.y = 0.26;
+    g.add(trunk);
+    // Layered pine foliage (darker, more triangular)
+    const layers = [
+      { y: 0.55, w: 0.55, h: 0.42 },
+      { y: 0.82, w: 0.72, h: 0.38 },
+      { y: 1.05, w: 0.58, h: 0.32 },
+    ];
+    layers.forEach(l => {
+      const foliage = new THREE.Mesh(new THREE.ConeGeometry(l.w, l.h, 4), M.leafDark || M.leaf);
+      foliage.position.y = l.y;
+      g.add(foliage);
+    });
+    g.userData = { kind: 'tree', swayPhase: Math.random() * Math.PI * 2 };
+    castReceive(g);
+    return g;
+  }
+
+  // Campfire for Grassland / fantasy camps
+  function makeCampfire() {
+    const g = new THREE.Group();
+    const logs = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.12, 0.42), M.trunk);
+    logs.position.y = 0.06;
+    g.add(logs);
+    const glow = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.18, 6), M.lanternGlow);
+    glow.position.y = 0.18;
+    glow.material = glow.material.clone();
+    glow.material.transparent = true;
+    glow.material.opacity = 0.85;
+    g.add(glow);
+    const embers = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.14, 0.08, 6), M.templeRed);
+    embers.position.y = 0.22;
+    g.add(embers);
+    g.userData = { kind: 'campfire' };
+    castReceive(g);
+    return g;
+  }
+
+  // Stone guardian lion for China theme (pair with pagodas)
+  function makeStoneLion() {
+    const g = new THREE.Group();
+    const base = new THREE.Mesh(roundedBox(0.38, 0.10, 0.28, 0.02), M.rock);
+    base.position.y = 0.05;
+    g.add(base);
+    const body = new THREE.Mesh(roundedBox(0.32, 0.28, 0.38, 0.03), M.rockHi);
+    body.position.y = 0.24;
+    g.add(body);
+    const head = new THREE.Mesh(roundedBox(0.26, 0.22, 0.30, 0.02), M.rock);
+    head.position.y = 0.48;
+    g.add(head);
+    // Simple mane / decorative top
+    const mane = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.08, 0.34), M.templeRed);
+    mane.position.y = 0.58;
+    g.add(mane);
+    g.userData = { kind: 'lion' };
+    castReceive(g);
+    return g;
+  }
+
+  // Red banner / hanging scroll for China theme (highly iconic)
+  function makeRedBanner() {
+    const g = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.1, 0.06), M.rockDk);
+    pole.position.y = 0.55;
+    g.add(pole);
+    const banner = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.68, 0.04), M.templeRed);
+    banner.position.y = 0.72;
+    g.add(banner);
+    // Gold trim lines
+    const trim1 = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.06, 0.05), M.chestBand);
+    trim1.position.y = 0.38;
+    g.add(trim1);
+    const trim2 = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.06, 0.05), M.chestBand);
+    trim2.position.y = 1.06;
+    g.add(trim2);
+    g.userData = { kind: 'banner' };
+    castReceive(g);
+    return g;
+  }
+
+  // Paifang (Chinese ceremonial gate) — signature China landmark
+  function makePaifang() {
+    const g = new THREE.Group();
+    const isChina = worldTheme === 'china';
+    // Two tall pillars
+    const pillarL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.35, 0.18), M.rock);
+    pillarL.position.set(-0.38, 0.68, 0);
+    g.add(pillarL);
+    const pillarR = pillarL.clone();
+    pillarR.position.x = 0.38;
+    g.add(pillarR);
+    // Top beam
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.16, 0.22), M.templeRed);
+    beam.position.y = 1.32;
+    g.add(beam);
+    // Decorative roof
+    const roof = new THREE.Mesh(roundedBox(1.18, 0.14, 0.28, 0.02), M.templeDark);
+    roof.position.y = 1.48;
+    g.add(roof);
+    // Small golden details
+    const gold = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.06, 0.24), M.chestBand);
+    gold.position.y = 1.38;
+    g.add(gold);
+    g.userData = { kind: 'paifang' };
+    castReceive(g);
+    return g;
+  }
+
   function makeStoneLantern() {
     const g = new THREE.Group();
     const base = new THREE.Mesh(roundedBox(0.28, 0.12, 0.28, 0.025), M.rockDk);
@@ -2728,23 +2877,52 @@
     return g;
   }
 
+  // Modern City lamppost (tall, clean, glowing at night)
+  function makeLamppost() {
+    const g = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.35, 0.08), M.rockDk);
+    pole.position.y = 0.68;
+    g.add(pole);
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.06, 0.10), M.rockDk);
+    arm.position.y = 1.32;
+    g.add(arm);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.10, 0.22), M.rock);
+    head.position.y = 1.36;
+    g.add(head);
+    const glow = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.08, 0.18), M.lanternGlow);
+    glow.position.y = 1.32;
+    g.add(glow);
+    const base = new THREE.Mesh(roundedBox(0.22, 0.10, 0.22, 0.02), M.rock);
+    base.position.y = 0.05;
+    g.add(base);
+    g.userData = { kind: 'lantern' };
+    castReceive(g);
+    return g;
+  }
+
   function makePagoda(floors = 3) {
     const g = new THREE.Group();
     const levels = Math.max(2, Math.min(5, floors || 3));
     let y = 0;
+    const isChina = worldTheme === 'china';
     for (let i = 0; i < levels; i++) {
       const w = 0.78 - i * 0.09;
       const h = 0.26;
-      const body = new THREE.Mesh(roundedBox(w * 0.70, h, w * 0.62, 0.025), i % 2 ? M.templeWall : M.templeRed);
+      const bodyMat = isChina && i === 0 ? M.templeRed : (i % 2 ? M.templeWall : M.templeRed);
+      const body = new THREE.Mesh(roundedBox(w * 0.70, h, w * 0.62, 0.025), bodyMat);
       body.position.y = y + h / 2;
       g.add(body);
-      const roof = new THREE.Mesh(roundedBox(w, 0.08, w * 0.78, 0.025), M.templeDark);
-      roof.position.y = y + h + 0.04;
+      // China gets much more dramatic upturned curved roofs
+      const roofW = isChina ? w * 1.15 : w * 1.02;
+      const roofH = isChina ? 0.11 : 0.09;
+      const roof = new THREE.Mesh(roundedBox(roofW, roofH, isChina ? w * 0.96 : w * 0.82, 0.025), M.templeDark);
+      roof.position.y = y + h + 0.05;
       g.add(roof);
-      y += h + 0.13;
+      y += h + (isChina ? 0.16 : 0.13);
     }
-    const finial = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.18, 0.08), M.chestBand);
-    finial.position.y = y + 0.05;
+    const finialH = isChina ? 0.26 : 0.18;
+    const finial = new THREE.Mesh(new THREE.BoxGeometry(0.07, finialH, 0.07), M.chestBand);
+    finial.position.y = y + 0.06;
     g.add(finial);
     g.userData = { kind: 'house', chimneyTops: [] };
     castReceive(g);
@@ -4644,6 +4822,9 @@
     required: document.getElementById('adventure-required'),
     errors: document.getElementById('adventure-errors'),
     play: document.getElementById('adventure-play'),
+    skirmish: document.getElementById('adventure-skirmish'),
+    save: document.getElementById('adventure-save'),
+    load: document.getElementById('adventure-load'),
     feedback: '',
   };
 
@@ -4954,12 +5135,125 @@
     return SPRITE_DIRECTIONS.includes(direction) ? direction : 'front';
   }
 
+  // Known frames we have extracted for Japan (will grow as we complete more actions)
+  const JAPAN_SPRITE_OVERRIDES = {
+    hero: [
+      'idle-front', 'idle-right', 'idle-back', 'idle-left',
+      'move-front', 'move-right', 'move-back', 'move-left',
+      'slash-front', 'slash-right', 'slash-back', 'slash-left',
+      'guard-front', 'guard-right', 'guard-back', 'guard-left',
+      'hit-front', 'hit-right', 'hit-back', 'hit-left',
+      'defeated-front', 'defeated-right', 'defeated-back', 'defeated-left'
+    ],
+    villain: [
+      'idle-front', 'idle-right', 'idle-back', 'idle-left',
+      'move-front', 'move-right', 'move-back', 'move-left',
+      'attack-front', 'attack-right', 'attack-back', 'attack-left',
+      'guard-front', 'guard-right', 'guard-back', 'guard-left',
+      'hit-front', 'hit-right', 'hit-back', 'hit-left',
+      'defeated-front', 'defeated-right', 'defeated-back', 'defeated-left'
+    ],
+  };
+
+  // City theme — modern urban hero + corporate/assassin villain (44 frames extracted)
+  const CITY_SPRITE_OVERRIDES = {
+    hero: [
+      'idle-front', 'idle-right', 'idle-back', 'idle-left',
+      'move-front', 'move-right', 'move-back', 'move-left',
+      'slash-front', 'slash-right', 'slash-back', 'slash-left',
+      'guard-front', 'guard-right', 'guard-back', 'guard-left',
+      'hit-front', 'hit-right', 'hit-back', 'hit-left',
+      'defeated-front', 'defeated-right', 'defeated-back', 'defeated-left'
+    ],
+    villain: [
+      'idle-front', 'idle-right', 'idle-back', 'idle-left',
+      'move-front', 'move-right', 'move-back', 'move-left',
+      'attack-front', 'attack-right', 'attack-back', 'attack-left',
+      'guard-front', 'guard-right', 'guard-back', 'guard-left',
+      'hit-front', 'hit-right', 'hit-back', 'hit-left',
+      'defeated-front', 'defeated-right', 'defeated-back', 'defeated-left'
+    ],
+  };
+
+  // Grassland / Knights theme — classic fantasy knight hero + dark warlord villain
+  const GRASSLAND_SPRITE_OVERRIDES = {
+    hero: [
+      'idle-front', 'idle-right', 'idle-back', 'idle-left',
+      'move-front', 'move-right', 'move-back', 'move-left',
+      'slash-front', 'slash-right', 'slash-back', 'slash-left',
+      'guard-front', 'guard-right', 'guard-back', 'guard-left',
+      'hit-front', 'hit-right', 'hit-back', 'hit-left',
+      'defeated-front', 'defeated-right', 'defeated-back', 'defeated-left'
+    ],
+    villain: [
+      'idle-front', 'idle-right', 'idle-back', 'idle-left',
+      'move-front', 'move-right', 'move-back', 'move-left',
+      'attack-front', 'attack-right', 'attack-back', 'attack-left',
+      'guard-front', 'guard-right', 'guard-back', 'guard-left',
+      'hit-front', 'hit-right', 'hit-back', 'hit-left',
+      'defeated-front', 'defeated-right', 'defeated-back', 'defeated-left'
+    ],
+  };
+
+  // China / Wuxia theme — martial hero + imperial warlord (44 frames)
+  const CHINA_SPRITE_OVERRIDES = {
+    hero: [
+      'idle-front', 'idle-right', 'idle-back', 'idle-left',
+      'move-front', 'move-right', 'move-back', 'move-left',
+      'slash-front', 'slash-right', 'slash-back', 'slash-left',
+      'guard-front', 'guard-right', 'guard-back', 'guard-left',
+      'hit-front', 'hit-right', 'hit-back', 'hit-left',
+      'defeated-front', 'defeated-right', 'defeated-back', 'defeated-left'
+    ],
+    villain: [
+      'idle-front', 'idle-right', 'idle-back', 'idle-left',
+      'move-front', 'move-right', 'move-back', 'move-left',
+      'attack-front', 'attack-right', 'attack-back', 'attack-left',
+      'guard-front', 'guard-right', 'guard-back', 'guard-left',
+      'hit-front', 'hit-right', 'hit-back', 'hit-left',
+      'defeated-front', 'defeated-right', 'defeated-back', 'defeated-left'
+    ],
+  };
+
   function spriteAssetPath(role, action, direction) {
+    const normalizedDirection = normalizeSpriteDirection(direction);
+    const theme = (typeof worldTheme === 'string' && worldTheme) || 'classic';
+    const key = `${action}-${normalizedDirection}`;
+
+    // Japan — use extracted sprites when available
+    if (theme === 'japan') {
+      const available = JAPAN_SPRITE_OVERRIDES[role] || [];
+      if (available.includes(key)) {
+        return `japan/${role}/${key}.png`;
+      }
+    }
+    // City — modern urban hero + corporate villain (full 4-dir coverage)
+    if (theme === 'city') {
+      const available = CITY_SPRITE_OVERRIDES[role] || [];
+      if (available.includes(key)) {
+        return `city/${role}/${key}.png`;
+      }
+    }
+    // Grassland — classic fantasy knight + warlord (armored boots visible)
+    if (theme === 'grassland') {
+      const available = GRASSLAND_SPRITE_OVERRIDES[role] || [];
+      if (available.includes(key)) {
+        return `grassland/${role}/${key}.png`;
+      }
+    }
+    // China — wuxia martial hero + imperial warlord
+    if (theme === 'china') {
+      const available = CHINA_SPRITE_OVERRIDES[role] || [];
+      if (available.includes(key)) {
+        return `china/${role}/${key}.png`;
+      }
+    }
+
+    // Classic baseline (current behavior, files still live at hero/..., villain/...)
     const roleSet = PLAY_SPRITES[role];
     if (!roleSet) return '';
     const actionSet = roleSet[action] || roleSet.idle || roleSet.closed || roleSet.villager;
     if (!actionSet) return '';
-    const normalizedDirection = normalizeSpriteDirection(direction);
     return actionSet[normalizedDirection] || actionSet.default || actionSet.front || actionSet.right || actionSet.left || '';
   }
 
@@ -5068,14 +5362,16 @@
 
   function makeHeroCharacter(opts) {
     opts = opts || {};
-    const fallback = makeProceduralHeroCharacter({ name: 'heroFallback' });
-    return makeSpriteActor('hero', 'idle', Object.assign({ direction: 'front', spriteW: 0.88, spriteH: 0.88, shadowRadius: 0.23 }, opts), fallback);
+    const theme = (typeof worldTheme === 'string' && worldTheme) || 'classic';
+    const fallback = makeProceduralHeroCharacter({ name: 'heroFallback', theme });
+    return makeSpriteActor('hero', 'idle', Object.assign({ direction: 'front', spriteW: 0.88, spriteH: 0.88, shadowRadius: 0.23, theme }, opts), fallback);
   }
 
   function makeVillainCharacter(opts) {
     opts = opts || {};
-    const fallback = makeProceduralVillainCharacter({ name: 'villainFallback' });
-    return makeSpriteActor('villain', 'idle', Object.assign({ direction: 'front', spriteW: 0.90, spriteH: 0.90, shadowRadius: 0.24 }, opts), fallback);
+    const theme = (typeof worldTheme === 'string' && worldTheme) || 'classic';
+    const fallback = makeProceduralVillainCharacter({ name: 'villainFallback', theme });
+    return makeSpriteActor('villain', 'idle', Object.assign({ direction: 'front', spriteW: 0.90, spriteH: 0.90, shadowRadius: 0.24, theme }, opts), fallback);
   }
 
   function makeNpcCharacter(variant, opts) {
@@ -5241,7 +5537,7 @@
   const HOME_BORDER_COLOR = 0x2a1a0e;
   const HOME_BORDER_Y = 0.04;
   const homeBorderStripMat = new THREE.MeshBasicMaterial({ color: HOME_BORDER_COLOR });
-  const STRIP_WIDTH = 0.12;       // how thick the line reads on the ground
+  const STRIP_WIDTH = GRID >= 24 ? 0.06 : 0.12;  // even thinner on large grids
   const STRIP_Y = 0.03;            // slightly above ground to beat z-fighting
   function addStrip(x, z, len, axis) {
     const w = axis === 'x' ? len + STRIP_WIDTH : STRIP_WIDTH;
@@ -5631,8 +5927,30 @@
     else if (cell.kind === 'bamboo')    mesh = makeBambooCluster();
     else if (cell.kind === 'rock')      mesh = makeRock(getGhostRockNeighbors(cells, x, z), level, x + 1000, z + 1000);
     else if (cell.kind === 'bridge')    mesh = makeBridge(ghostBridgeOrientation(cells, x, z), cell.floors || 1);
-    else if (cell.kind === 'lantern')   mesh = makeStoneLantern();
-    else if (cell.kind === 'torii')     mesh = makeToriiGate();
+    else if (cell.kind === 'lantern') {
+      mesh = (worldTheme === 'city') ? makeLamppost() : makeStoneLantern();
+      if (worldTheme === 'japan' && mesh) mesh.scale.set(1.14, 1.14, 1.14);
+      if (worldTheme === 'city' && mesh) mesh.scale.set(1.0, 1.0, 1.0);
+    }
+    else if (cell.kind === 'torii') {
+      mesh = makeToriiGate();
+      if (worldTheme === 'japan' && mesh) mesh.scale.set(1.24, 1.24, 1.24);
+    }
+    else if (cell.kind === 'campfire') {
+      mesh = makeCampfire();
+    }
+    else if (cell.kind === 'lion') {
+      mesh = makeStoneLion();
+      if (worldTheme === 'china' && mesh) mesh.scale.set(1.1, 1.1, 1.1);
+    }
+    else if (cell.kind === 'banner') {
+      mesh = makeRedBanner();
+      if (worldTheme === 'china' && mesh) mesh.scale.set(1.08, 1.08, 1.08);
+    }
+    else if (cell.kind === 'paifang') {
+      mesh = makePaifang();
+      if (worldTheme === 'china' && mesh) mesh.scale.set(1.0, 1.0, 1.0);
+    }
     else if (cell.kind === 'tuft')      mesh = makeTuft();
     else if (cell.kind === 'crop')      mesh = makeCrop();
     else if (cell.kind === 'corn')      mesh = makeCorn();
@@ -6391,8 +6709,27 @@
     else if (kind === 'bamboo')    mesh = makeBambooCluster();
     else if (kind === 'rock')      mesh = makeRock(getRockNeighbors(x, z), level, x, z, world[x][z].terrain === 'water');
     else if (kind === 'bridge')    mesh = makeBridge(getBridgeOrientation(x, z), level);
-    else if (kind === 'lantern')   mesh = makeStoneLantern();
-    else if (kind === 'torii')     mesh = makeToriiGate();
+    else if (kind === 'lantern') {
+      mesh = (worldTheme === 'city') ? makeLamppost() : makeStoneLantern();
+      if (worldTheme === 'japan' && mesh) mesh.scale.set(1.14, 1.14, 1.14);
+    }
+    else if (kind === 'torii') {
+      mesh = makeToriiGate();
+      // On Japan, make Torii a true signature landmark
+      if (worldTheme === 'japan' && mesh) mesh.scale.set(1.24, 1.24, 1.24);
+    }
+    else if (kind === 'campfire') {
+      mesh = makeCampfire();
+    }
+    else if (kind === 'lion') {
+      mesh = makeStoneLion();
+    }
+    else if (kind === 'banner') {
+      mesh = makeRedBanner();
+    }
+    else if (kind === 'paifang') {
+      mesh = makePaifang();
+    }
     else if (kind === 'tuft')      mesh = makeTuft();
     else if (kind === 'crop')      mesh = makeCrop();
     else if (kind === 'corn')      mesh = makeCorn();
@@ -6968,11 +7305,31 @@
     } else if (kind === 'house') {
       const v = tool.activeVariant;
       const bt = v && v.buildingType;
-      if      (bt === 'manor')      mesh = makeManor(1);
-      else if (bt === 'tower')      mesh = makeStoneTower(2);
-      else if (bt === 'turret')     mesh = makeTurret(1);
-      else if (bt === 'skyscraper') mesh = makeSkyscraper(4);
-      else                          mesh = makeHouse(1);
+
+      if (bt) {
+        if      (bt === 'manor')      mesh = makeManor(1);
+        else if (bt === 'tower')      mesh = makeStoneTower(2);
+        else if (bt === 'turret')     mesh = makeTurret(1);
+        else if (bt === 'skyscraper') mesh = makeSkyscraper(4);
+        else if (bt === 'temple')     mesh = makeTempleHouse(1);
+        else if (bt === 'pagoda')     mesh = makePagoda(2);
+        else if (bt === 'watchtower') mesh = makeWatchtower(1);
+        else                          mesh = makeHouse(1);
+      } else if (worldTheme === 'japan') {
+        // Strong Japan bias for generic House tool
+        mesh = Math.random() < 0.55 ? makeTempleHouse(1) : makePagoda(1);
+      } else if (worldTheme === 'city') {
+        // City bias — tall modern buildings
+        mesh = Math.random() < 0.5 ? makeSkyscraper(3) : makeSkyscraper(2);
+      } else if (worldTheme === 'grassland') {
+        // Grassland bias — rustic wooden houses and small keeps
+        mesh = Math.random() < 0.6 ? makeHouse(1) : makeHouse(2);
+      } else if (worldTheme === 'china') {
+        // China bias — strong curved-roof pagoda and temple architecture
+        mesh = Math.random() < 0.65 ? makePagoda(2) : makeTempleHouse(1);
+      } else {
+        mesh = makeHouse(1);
+      }
     } else if (tool.terrain) {
       // For pure terrain tools, show a thin coloured swatch hovering
       // just above the tile so the user can still see what they'd paint.
@@ -7126,8 +7483,12 @@
     },
     { id: 'rock',   label: 'Rock',   kind: 'rock',  color: '#9b9a8f', shortcut: '8', group: 'nature' },
     { id: 'bridge', label: 'Bridge', kind: 'bridge', terrainOverride: 'water', color: '#8b5a32', shortcut: '9', group: 'build' },
-    { id: 'lantern', label: 'Lantern', kind: 'lantern', color: '#d9a82b', group: 'decor', themes: ['japan', 'china'] },
+    { id: 'lantern', label: 'Lantern', kind: 'lantern', color: '#d9a82b', group: 'decor', themes: ['japan', 'china', 'city'] },
     { id: 'torii',   label: 'Torii',   kind: 'torii',   color: '#b84838', group: 'build', themes: ['japan'] },
+    { id: 'campfire', label: 'Campfire', kind: 'campfire', color: '#e85d04', group: 'decor', themes: ['grassland', 'classic'] },
+    { id: 'lion',     label: 'Stone Lion', kind: 'lion', color: '#8c6f4e', group: 'decor', themes: ['china'] },
+    { id: 'banner',   label: 'Red Banner', kind: 'banner', color: '#b71c1c', group: 'decor', themes: ['china'] },
+    { id: 'paifang',  label: 'Paifang', kind: 'paifang', color: '#9c2a1f', group: 'build', themes: ['china'] },
     { id: 'crop',      label: 'Crop',      kind: 'crop',      terrainOverride: 'dirt', color: '#86c544', shortcut: 'g', group: 'crops' },
     { id: 'corn',      label: 'Corn',      kind: 'corn',      terrainOverride: 'dirt', color: '#f2c849', shortcut: 'n', group: 'crops' },
     { id: 'wheat',     label: 'Wheat',     kind: 'wheat',     terrainOverride: 'dirt', color: '#e6c354', shortcut: 'w', group: 'crops' },
@@ -8032,9 +8393,15 @@
   }
 
   function resetCameraDefaults() {
-    // Scale the default view to the current home board so the whole
-    // grid sits inside the frame regardless of size (8 / 12 / 16 / 20).
-    viewSize = DEFAULT_VIEW_SIZE * (GRID / HOME_GRID_DEFAULT);
+    const scale = GRID / HOME_GRID_DEFAULT;
+    // More generous view on large tactical boards (24–32)
+    const clampedScale = Math.min(scale, 12.2);
+    viewSize = DEFAULT_VIEW_SIZE * clampedScale;
+
+    // On bigger grids, pull the camera back a bit more for better overview
+    if (GRID >= 24) {
+      polar = DEFAULT_POLAR + 0.54;
+    }
     azimuth = DEFAULT_AZIMUTH;
     polar = DEFAULT_POLAR;
     target.copy(DEFAULT_TARGET);
@@ -8261,6 +8628,134 @@
   }
 
   // -------- play mode --------
+  // -------- tactical entities (multi-unit FFT foundation) --------
+  // We are evolving from single player + villain toward a full party + multiple enemies.
+  // During transition, playMode.player and playMode.villain are kept as convenience aliases
+  // pointing into playMode.party[0] and playMode.enemies[0].
+
+  const TACTICAL_JOBS = {
+    // Core / fallback
+    vanguard:   { name: 'Vanguard',   move: 3, hp: 6, attackPower: 1, guardPower: 1, attackRange: 1.0 },
+
+    // Villain base
+    hexblade:   { name: 'Hexblade',   move: 2, hp: 5, attackPower: 1, guardPower: 1, attackRange: 1.0 },
+
+    // Japan
+    samurai:    { name: 'Samurai',    move: 3, hp: 6, attackPower: 1, guardPower: 1, attackRange: 1.0, special: 'kiai' },
+    ronin:      { name: 'Ronin',      move: 3, hp: 5, attackPower: 1, guardPower: 1, attackRange: 1.0 },
+
+    // Grassland / Knights
+    knight:     { name: 'Knight',     move: 2, hp: 7, attackPower: 1, guardPower: 2, attackRange: 1.0, special: 'shieldWall' },
+    archer:     { name: 'Archer',     move: 3, hp: 4, attackPower: 1, guardPower: 0, attackRange: 2.5, special: 'volley' },
+
+    // City
+    agent:      { name: 'Agent',      move: 3, hp: 5, attackPower: 1, guardPower: 1, attackRange: 1.0, special: 'smoke' },
+    enforcer:   { name: 'Enforcer',   move: 2, hp: 6, attackPower: 1, guardPower: 1, attackRange: 1.0 },
+
+    // China / Wuxia
+    swordsman:  { name: 'Swordsman',  move: 3, hp: 5, attackPower: 1, guardPower: 1, attackRange: 1.0, special: 'riposte' },
+    monk:       { name: 'Monk',       move: 3, hp: 5, attackPower: 1, guardPower: 2, attackRange: 1.0, special: 'focus' },
+  };
+
+  function createTacticalEntity(opts) {
+    opts = opts || {};
+    const job = TACTICAL_JOBS[opts.job] || TACTICAL_JOBS.vanguard;
+    const isEnemy = !!opts.isEnemy;
+
+    const base = {
+      id: opts.id || ('unit_' + Math.random().toString(36).slice(2, 9)),
+      name: opts.name || job.name,
+      job: opts.job || 'vanguard',
+      x: opts.x || 0,
+      z: opts.z || 0,
+      renderX: opts.x || 0,
+      renderZ: opts.z || 0,
+      hp: opts.hp ?? job.hp,
+      maxHp: opts.maxHp ?? job.hp,
+      moveTiles: opts.moveTiles ?? job.move,
+      attackRange: opts.attackRange ?? job.attackRange ?? 1.0,
+      facing: opts.facing || 'front',
+      action: 'idle',
+      guarding: false,
+      hitFlash: 0,
+      dirX: 0,
+      dirZ: isEnemy ? 0 : -1,
+
+      // Legacy fields
+      moveSpeed: isEnemy ? PLAY_VILLAIN_SPEED : PLAY_PLAYER_SPEED,
+      movePhase: 0,
+      dashTimer: 0,
+      guardTimer: 0,
+      slashTimer: 0,
+      cooldown: isEnemy ? 0.45 : 0,
+      dashCooldown: 0,
+      guardCooldown: 0,
+      fightingStyle: job.name,
+      actions: isEnemy ? PLAY_VILLAIN_ACTIONS : PLAY_PLAYER_ACTIONS,
+      state: isEnemy ? 'patrol' : null,
+      windup: 0,
+      pendingStrike: false,
+      patrolIndex: 0,
+      patrolPoints: opts.patrolPoints || [],
+      authoredX: opts.x || 0,
+      authoredZ: opts.z || 0,
+      spawnX: opts.x || 0,
+      spawnZ: opts.z || 0,
+
+      // Tactics
+      ap: opts.ap ?? 2,
+      maxAp: 2,
+      cooldowns: {},
+
+      // Theme / visuals
+      theme: opts.theme || 'classic',
+      spriteRole: opts.spriteRole || (isEnemy ? 'villain' : 'hero'),
+    };
+
+    if (opts.authoredX !== undefined) base.authoredX = opts.authoredX;
+    if (opts.authoredZ !== undefined) base.authoredZ = opts.authoredZ;
+    return base;
+  }
+
+  function getAllUnits() {
+    const units = [];
+    if (playMode.party && playMode.party.length) units.push(...playMode.party);
+    if (playMode.enemies && playMode.enemies.length) units.push(...playMode.enemies);
+    return units;
+  }
+
+  function getCurrentActor() {
+    if (!playMode.active) return null;
+    const idx = playMode.selectedPartyIndex || 0;
+    if (playMode.party && playMode.party.length > idx) {
+      return playMode.party[idx];
+    }
+    return playMode.player || null;
+  }
+
+  function getClosestLivingPartyMember(fromEntity) {
+    if (!playMode.party || playMode.party.length === 0) return null;
+    let closest = null;
+    let minDist = Infinity;
+    playMode.party.forEach(member => {
+      if (member.hp <= 0) return;
+      const d = playDistance(fromEntity, member);
+      if (d < minDist) {
+        minDist = d;
+        closest = member;
+      }
+    });
+    return closest;
+  }
+
+  function selectNextPartyMember() {
+    if (!playMode.party || playMode.party.length <= 1) return;
+    playMode.selectedPartyIndex = (playMode.selectedPartyIndex + 1) % playMode.party.length;
+    // Optional: give visual feedback or reset action selection
+    playMode.selectedAction = 'move';
+  }
+
+  // Legacy constants (kept for compatibility during refactor)
   const PLAY_PLAYER_MAX_HP = 6;
   const PLAY_VILLAIN_MAX_HP = 4;
   const PLAY_PLAYER_SPEED = 2.75;
@@ -8324,8 +8819,11 @@
     npcLine: '',
     markers: {},
     cameraBackup: null,
-    player: null,
-    villain: null,
+    selectedPartyIndex: 0,     // which member of the party is currently acting
+    party: [],                 // array of party tactical entities
+    enemies: [],               // array of enemy tactical entities
+    player: null,              // legacy alias → party[0]
+    villain: null,             // legacy alias → enemies[0]
     playerMesh: null,
     villainMesh: null,
     attackMesh: null,
@@ -8351,15 +8849,20 @@
     guard: document.getElementById('play-guard'),
     endTurn: document.getElementById('play-end-turn'),
     reset: document.getElementById('play-reset'),
+    newSkirmish: document.getElementById('play-new-skirmish'),
+    saveSkirmish: document.getElementById('play-save-skirmish'),
+    loadSkirmish: document.getElementById('play-load-skirmish'),
     exit: document.getElementById('play-exit'),
   };
 
   function makePlayerPawn() {
-    return makeHeroCharacter({ name: 'playerPawn' });
+    const theme = (typeof worldTheme === 'string' && worldTheme) || 'classic';
+    return makeHeroCharacter({ name: 'playerPawn', theme });
   }
 
   function makeVillainPawn() {
-    return makeVillainCharacter({ name: 'villainPawn' });
+    const theme = (typeof worldTheme === 'string' && worldTheme) || 'classic';
+    return makeVillainCharacter({ name: 'villainPawn', theme });
   }
 
   function makeAttackRing() {
@@ -8538,7 +9041,8 @@
 
   function renderTacticsOverlay() {
     clearTacticsOverlay();
-    if (!playMode.active || playMode.ended || !playMode.player) {
+    const actor = getCurrentActor();
+    if (!playMode.active || playMode.ended || !actor) {
       playOverlayGroup.visible = false;
       return;
     }
@@ -8555,17 +9059,21 @@
     if (playMode.turn !== 'player' || playHasActiveMovement()) {
       return;
     }
+    const actor = getCurrentActor() || playMode.player;
     const action = playMode.selectedAction || 'move';
     let cells = [];
     let mat = M.playReachable;
     if (action === 'slash') {
-      cells = playAttackCells(playMode.player, PLAY_PLAYER_ACTIONS.slash.range);
+      const spec = getActorAttackSpec(actor);
+      let r = spec.range;
+      if (actor.postSpecialBonus === 'focusedShot') r += 0.8;
+      cells = playAttackCells(actor, r);
       mat = M.playAttackTile;
     } else if (action === 'dash') {
-      cells = playReachableCells(playMode.player, PLAY_PLAYER_ACTIONS.dash.range);
+      cells = playReachableCells(actor, PLAY_PLAYER_ACTIONS.dash.range);
       mat = M.playDashTile;
     } else {
-      cells = playReachableCells(playMode.player, PLAY_PLAYER_ACTIONS.move.range);
+      cells = playReachableCells(actor, PLAY_PLAYER_ACTIONS.move.range);
       mat = M.playReachable;
     }
     if (action !== 'slash' && playMode.villain) {
@@ -8580,7 +9088,10 @@
     }
     if (action === 'slash' && playMode.villain && playMode.villain.hp > 0) {
       const v = playEntityTile(playMode.villain);
-      const inRange = playDistance(playMode.player, playMode.villain) <= PLAY_PLAYER_ACTIONS.slash.range + 0.001;
+      const spec = getActorAttackSpec(actor);
+      let r = spec.range;
+      if (actor.postSpecialBonus === 'focusedShot') r += 0.8;
+      const inRange = playDistance(actor, playMode.villain) <= r + 0.001;
       if (inRange) {
         const targetMesh = makeTacticsTileMesh(M.playTarget);
         const p = tilePos(v.x, v.z);
@@ -8731,6 +9242,18 @@
       adventurePanel.play.disabled = !validation.ok;
       adventurePanel.play.title = validation.ok ? 'Start Play Mode' : 'Complete required adventure markers first';
     }
+    if (adventurePanel.skirmish) {
+      adventurePanel.skirmish.disabled = false;
+      adventurePanel.skirmish.title = 'Instant 3v2 tactical battle on a themed map';
+    }
+    if (adventurePanel.save) {
+      adventurePanel.save.disabled = false;
+      adventurePanel.save.title = 'Save current board to browser';
+    }
+    if (adventurePanel.load) {
+      adventurePanel.load.disabled = false;
+      adventurePanel.load.title = 'Load last saved board (reloads page)';
+    }
   }
 
   function setWorldTheme(theme, opts) {
@@ -8784,6 +9307,7 @@
       themedCell(3, 3, 'path', 'torii'),
       themedCell(2, 3, 'grass', 'lantern'),
       themedCell(4, 3, 'grass', 'lantern'),
+      themedCell(1, 4, 'path', 'torii'),
       themedCell(0, 5, 'grass', 'sakura', 2),
       themedCell(7, 6, 'grass', 'sakura', 1),
       themedCell(6, 5, 'grass', 'bamboo', 2),
@@ -8793,6 +9317,8 @@
       themedCell(7, 7, 'dirt', 'crop', 1),
       themedCell(0, 0, 'grass', 'rock', 2),
       themedCell(1, 6, 'grass', 'lantern'),
+      themedCell(2, 0, 'grass', 'lantern'),
+      themedCell(5, 0, 'path', 'torii'),
     ].forEach(c => cells.push(c));
     return {
       v: STORAGE_VERSION,
@@ -8872,6 +9398,13 @@
         else if (next.buildingType === 'skyscraper') next.buildingType = 'pagoda';
         else if (!next.buildingType && next.floors >= 3) next.buildingType = 'pagoda';
         else if (!next.buildingType && cellRand(x, z, 992) < 0.28) next.buildingType = 'temple';
+        else if (!next.buildingType && theme === 'japan') {
+          // Strong bias toward Japanese architecture on Japan theme
+          next.buildingType = cellRand(x, z, 993) < 0.55 ? 'temple' : 'pagoda';
+        }
+      }
+      if (theme === 'japan' && !next.buildingType && next.kind === 'house') {
+        next.buildingType = 'temple';
       }
     } else if (theme === 'city') {
       if (next.kind === 'sakura' || next.kind === 'bamboo') next.kind = 'tree';
@@ -8881,6 +9414,15 @@
           next.buildingType = 'skyscraper';
           next.floors = Math.max(next.floors, 4);
         }
+      }
+      // City also gets a few lampposts and modern props on conversion
+      if (next.kind === 'tree' && Math.random() < 0.35) next.kind = 'tree'; // street trees stay
+    } else if (theme === 'china') {
+      if (next.kind === 'sakura') next.kind = 'bamboo';
+      if (next.kind === 'lantern') next.kind = 'lantern'; // red lanterns fit China well
+      if (next.kind === 'torii') next.kind = null;
+      if (next.kind === 'house' && ['cottage', 'manor', 'skyscraper'].includes(next.buildingType)) {
+        next.buildingType = Math.random() < 0.6 ? 'pagoda' : 'temple';
       }
     } else {
       if (next.kind === 'sakura' || next.kind === 'bamboo') next.kind = 'tree';
@@ -9191,7 +9733,9 @@
   }
 
   function playCanSpendAP(cost) {
-    return playIsPlayerTurn() && playMode.playerAP >= cost;
+    const actor = getCurrentActor();
+    const ap = actor ? (actor.ap ?? playMode.playerAP) : playMode.playerAP;
+    return playIsPlayerTurn() && ap >= cost;
   }
 
   function playSelectAction(action) {
@@ -9203,33 +9747,50 @@
   }
 
   function playSpendAP(cost) {
-    playMode.playerAP = Math.max(0, playMode.playerAP - cost);
-    if (playMode.playerAP <= 0 && !playMode.ended) {
-      if (playHasActiveMovement()) playMode.pendingTurnEnd = true;
-      else playEndPlayerTurn();
+    const actor = getCurrentActor();
+    if (actor) {
+      actor.ap = Math.max(0, (actor.ap ?? playMode.playerAP) - cost);
+      if (actor.ap <= 0 && !playMode.ended) {
+        if (playHasActiveMovement()) playMode.pendingTurnEnd = true;
+        else playEndPlayerTurn();
+      }
+    } else {
+      playMode.playerAP = Math.max(0, playMode.playerAP - cost);
+      if (playMode.playerAP <= 0 && !playMode.ended) {
+        if (playHasActiveMovement()) playMode.pendingTurnEnd = true;
+        else playEndPlayerTurn();
+      }
     }
-    else {
-      renderTacticsOverlay();
-      updatePlayHud();
-    }
+    renderTacticsOverlay();
+    updatePlayHud();
   }
 
   function playStartPlayerTurn() {
     if (playMode.ended) return;
     playMode.turn = 'player';
     playMode.turnCount += 1;
-    playMode.playerAP = PLAY_TACTICS_MAX_AP;
     playMode.enemyAP = PLAY_TACTICS_MAX_AP;
     playMode.enemyTurnTimer = 0;
     playMode.pendingTurnEnd = false;
     playMode.enemyPendingAttack = false;
     playMode.enemyTurnDoneAfterMove = false;
     playMode.selectedAction = 'move';
-    if (playMode.player) {
+
+    // Reset every party member (true multi-unit support)
+    if (playMode.party && playMode.party.length > 0) {
+      playMode.party.forEach(member => {
+        member.ap = PLAY_TACTICS_MAX_AP;
+        member.guarding = false;
+        member.guardTimer = 0;
+        if (!member.action || member.action === 'guard') member.action = 'idle';
+      });
+    } else if (playMode.player) {
+      playMode.playerAP = PLAY_TACTICS_MAX_AP;
       playMode.player.guarding = false;
       playMode.player.guardTimer = 0;
       if (!playMode.player.action || playMode.player.action === 'guard') playMode.player.action = 'idle';
     }
+
     renderTacticsOverlay();
     updatePlayHud();
   }
@@ -9272,73 +9833,163 @@
     return true;
   }
 
-  function playDamageVillain(amount) {
-    if (playMode.ended || !playMode.villain || playMode.villain.hp <= 0) return;
-    const guarded = !!playMode.villain.guarding;
+  function playDamageVillain(amount, specificTarget) {
+    if (playMode.ended) return;
+    // Multi-enemy aware: prefer explicit target, else first living enemy
+    let enemy = null;
+    if (specificTarget && specificTarget.hp > 0) {
+      enemy = specificTarget;
+    } else if (playMode.enemies && playMode.enemies.length > 0) {
+      enemy = playMode.enemies.find(e => e && e.hp > 0) || playMode.villain;
+    } else {
+      enemy = playMode.villain;
+    }
+    if (!enemy) return;
+
+    const guarded = !!enemy.guarding;
     const damage = guarded ? Math.max(0, amount - 1) : amount;
-    playMode.villain.guarding = false;
+    enemy.guarding = false;
     if (damage <= 0) {
-      playMode.villain.hitFlash = 0.10;
-      addDamagePopup(playMode.villain, 'Guard', true);
+      enemy.hitFlash = 0.10;
+      addDamagePopup(enemy, 'Guard', true);
       return;
     }
-    playMode.villain.hp -= damage;
-    playMode.villain.hitFlash = 0.18;
-    addDamagePopup(playMode.villain, '-' + damage, guarded);
+    enemy.hp -= damage;
+    enemy.hitFlash = 0.18;
+    addDamagePopup(enemy, '-' + damage, guarded);
     if (typeof playSfx === 'function') playSfx('knock', 0.55);
-    if (playMode.villain.hp <= 0) {
-      playMode.villain.hp = 0;
-      playMode.villain.state = 'defeated';
-      if (playMode.objective === 'defeat_villain') playComplete('won');
+    if (enemy.hp <= 0) {
+      enemy.state = 'defeated';
+      enemy.action = 'defeated';
+      // Sync legacy villain alias if this was the main villain
+      if (playMode.villain === enemy || playMode.villain.id === enemy.id) {
+        playMode.villain.hp = 0;
+        playMode.villain.state = 'defeated';
+        playMode.villain.action = 'defeated';
+      }
+      // Win only when ALL enemies are dead
+      const allDead = !playMode.enemies || playMode.enemies.every(e => !e || e.hp <= 0);
+      if (allDead && playMode.objective === 'defeat_villain') playComplete('won');
     }
   }
 
   function playRunEnemyTurn() {
-    if (!playMode.active || playMode.ended || !playMode.villain || playMode.villain.hp <= 0) return;
-    const villain = playMode.villain;
-    const player = playMode.player;
-    villain.guarding = false;
-    let ap = PLAY_TACTICS_MAX_AP;
-    const dist = playDistance(villain, player);
-    const canSee = playHasLineOfSight(villain, player);
-    if (villain.hp <= 1 && dist < 2.25) {
-      const retreat = playBestReachableCell(villain, player, villain.moveTiles || 2, true);
-      const moved = playMoveEntityToTile(villain, retreat, 'retreat');
-      villain.state = 'retreat';
-      ap -= PLAY_VILLAIN_ACTIONS.move.cost;
-      if (ap > 0) {
-        villain.guarding = true;
-        villain.state = 'guard';
+    if (!playMode.active || playMode.ended || !playMode.enemies || playMode.enemies.length === 0) return;
+
+    playMode.enemies.forEach((enemy, idx) => {
+      if (!enemy || enemy.hp <= 0) return;
+
+      const target = getClosestLivingPartyMember(enemy) || playMode.player;
+      if (!target) return;
+
+      enemy.guarding = false;
+      const dist = playDistance(enemy, target);
+      const canSee = playHasLineOfSight(enemy, target);
+      const isLead = idx === 0;
+      const p = enemy.personality || (isLead ? 'aggressive' : 'normal');
+
+      // Low HP behavior varies by personality
+      if (enemy.hp <= 1 && dist < 2.25) {
+        let retreatDist = true;
+        if (p === 'defensive' || p === 'support') retreatDist = false; // defensive stays closer
+        const retreat = playBestReachableCell(enemy, target, enemy.moveTiles || 2, retreatDist);
+        playMoveEntityToTile(enemy, retreat, 'retreat');
+        enemy.state = 'retreat';
+        if ((p === 'defensive' || p === 'support') && Math.random() < 0.7) {
+          enemy.guarding = true;
+          enemy.state = 'guard';
+        }
+        return;
       }
-      playMode.enemyTurnDoneAfterMove = moved;
-      return;
-    }
-    if (dist <= PLAY_VILLAIN_ATTACK_RANGE && canSee) {
-      villain.state = 'windup';
-      villain.windup = PLAY_VILLAIN_WINDUP;
-      playFaceToward(villain, player);
-      playDamagePlayer(PLAY_VILLAIN_ACTIONS.hexSlash.damage);
-      villain.cooldown = PLAY_VILLAIN_ACTIONS.hexSlash.cooldown;
-      return;
-    }
-    const approach = playBestReachableCell(villain, player, villain.moveTiles || 2, false);
-    const moved = playMoveEntityToTile(villain, approach, 'move');
-    villain.state = 'chase';
-    ap -= PLAY_VILLAIN_ACTIONS.move.cost;
-    if (ap > 0 && playDistance(villain, player) <= PLAY_VILLAIN_ATTACK_RANGE && playHasLineOfSight(villain, player)) {
-      if (moved) {
-        playMode.enemyPendingAttack = true;
-        playMode.enemyTurnDoneAfterMove = true;
-      } else {
-        villain.state = 'windup';
-        villain.windup = PLAY_VILLAIN_WINDUP;
-        playFaceToward(villain, player);
+
+      // Personality-driven decision making (improved for ranged enemies)
+      let attackRange = enemy.attackRange || PLAY_VILLAIN_ATTACK_RANGE;
+      let willAttack = dist <= attackRange && canSee;
+      let willGuardAfterMove = false;
+
+      if (p === 'aggressive') {
+        attackRange *= 1.05;
+        willAttack = dist <= attackRange && canSee;
+      } else if (p === 'defensive') {
+        if (dist > 1.8) willAttack = false;
+        willGuardAfterMove = Math.random() < 0.35;
+      } else if (p === 'hitrun') {
+        // Ranged hit-and-run (good for Archer enemies)
+        if (dist < attackRange * 0.6) {
+          const retreat = playBestReachableCell(enemy, target, enemy.moveTiles || 2, true);
+          playMoveEntityToTile(enemy, retreat, 'retreat');
+          enemy.state = 'retreat';
+          return;
+        }
+        // Prefer attacking from max range
+        if (dist > attackRange * 0.85 && dist <= attackRange && canSee) {
+          willAttack = true;
+        }
+      } else if (p === 'support') {
+        const lead = playMode.enemies[0];
+        if (lead && lead.hp > 0 && playDistance(enemy, lead) > 2.5) {
+          const towardLead = playBestReachableCell(enemy, lead, enemy.moveTiles || 2, false);
+          playMoveEntityToTile(enemy, towardLead, 'move');
+          return;
+        }
+      }
+
+      // Chance for certain personalities to use a special ability
+      const canSpecial = (enemy.specialCooldown || 0) <= 0.1;
+      if (canSpecial && p === 'aggressive' && Math.random() < 0.28 && dist < 2.0) {
+        // Aggressive power strike (Ronin)
+        enemy.state = 'windup';
+        enemy.windup = PLAY_VILLAIN_WINDUP * 0.7;
+        playFaceToward(enemy, target);
+        playDamagePlayer(2); // stronger hit
+        enemy.cooldown = 1.1;
+        enemy.specialCooldown = 3.5;
+        return;
+      }
+      if (canSpecial && p === 'defensive' && Math.random() < 0.35) {
+        // Defensive Shield Wall
+        enemy.guarding = true;
+        enemy.guardTimer = 1.3;
+        enemy.specialCooldown = 3.8;
+        enemy.state = 'guard';
+        if (typeof playSfx === 'function') playSfx('knock', 0.4);
+        return;
+      }
+      if (canSpecial && p === 'support' && Math.random() < 0.45) {
+        // Support enemy tries to heal the lead enemy if wounded
+        const lead = playMode.enemies[0];
+        if (lead && lead.hp < (lead.maxHp || 5) - 1 && lead.hp > 0) {
+          lead.hp = Math.min(lead.maxHp || 5, lead.hp + 1);
+          enemy.specialCooldown = 4.2;
+          enemy.state = 'guard';
+          if (typeof playSfx === 'function') playSfx('whoosh', 0.4);
+          return;
+        } else if (enemy.hp < (enemy.maxHp || 5) - 1) {
+          enemy.hp = Math.min(enemy.maxHp || 5, enemy.hp + 1);
+          enemy.specialCooldown = 4.0;
+          enemy.state = 'guard';
+          if (typeof playSfx === 'function') playSfx('whoosh', 0.35);
+          return;
+        }
+      }
+
+      if (willAttack) {
+        enemy.state = 'windup';
+        enemy.windup = PLAY_VILLAIN_WINDUP;
+        playFaceToward(enemy, target);
         playDamagePlayer(PLAY_VILLAIN_ACTIONS.hexSlash.damage);
-        villain.cooldown = PLAY_VILLAIN_ACTIONS.hexSlash.cooldown;
+        enemy.cooldown = PLAY_VILLAIN_ACTIONS.hexSlash.cooldown;
+        return;
       }
-    } else if (moved) {
-      playMode.enemyTurnDoneAfterMove = true;
-    }
+
+      const approach = playBestReachableCell(enemy, target, enemy.moveTiles || 2, false);
+      playMoveEntityToTile(enemy, approach, 'move');
+
+      if (willGuardAfterMove) {
+        enemy.guarding = true;
+        enemy.state = 'guard';
+      }
+    });
   }
 
   function playComplete(result) {
@@ -9351,19 +10002,42 @@
 
   function playDamagePlayer(amount) {
     if (playMode.ended) return;
-    const guarded = playMode.player && playMode.player.guarding;
-    const damage = guarded ? Math.max(0, amount - 1) : amount;
+    const actor = getCurrentActor() || playMode.player;
+    if (!actor) return;
+
+    const guarded = actor.guarding;
+    let guardReduction = 1;
+    if (guarded) {
+      // Knight and Monk get stronger guard
+      if (actor.job === 'knight' || actor.job === 'monk') guardReduction = 2;
+    }
+    const damage = guarded ? Math.max(0, amount - guardReduction) : amount;
     if (guarded && typeof playSfx === 'function') playSfx('knock', 0.28);
     if (damage <= 0) {
-      addDamagePopup(playMode.player, 'Guard', true);
+      addDamagePopup(actor, 'Guard', true);
       return;
     }
-    playMode.player.hp -= damage;
-    playMode.player.hitFlash = 0.16;
-    addDamagePopup(playMode.player, '-' + damage, guarded);
+    actor.hp -= damage;
+    actor.hitFlash = 0.16;
+    addDamagePopup(actor, '-' + damage, guarded);
     if (typeof playSfx === 'function') playSfx('knock', 0.45);
-    if (playMode.player.hp <= 0) {
-      playMode.player.hp = 0;
+
+    // Riposte counter (China Swordsman)
+    if (actor.riposteReady && damage > 0) {
+      const attacker = (playMode.enemies || []).find(e => e && e.hp > 0);
+      if (attacker) {
+        playDamageVillain(1, attacker);
+        addDamagePopup(attacker, '-1 (Riposte)', false);
+        attacker.hitFlash = 0.35; // strong counter flash
+        attacker.specialFlash = 0.5; // golden riposte effect
+      }
+      actor.riposteReady = false;
+    }
+
+    if (actor.hp <= 0) {
+      actor.hp = 0;
+      actor.action = 'defeated';
+      // For now, if any party member dies we consider it lost (can relax later)
       playComplete('lost');
     }
   }
@@ -9445,7 +10119,7 @@
     if (entity.hp === 0) return 'defeated';
     if (entity.hitFlash > 0) return 'hit';
     if (role === 'hero') {
-      if (entity.slashTimer > 0 || entity.action === 'slash') return 'slash';
+      if (entity.slashTimer > 0 || entity.action === 'slash' || entity.action === 'special') return 'slash';
       if (entity.guardTimer > 0 || entity.guarding || entity.action === 'guard') return 'guard';
       if (entity.action === 'dash') return 'dash';
       if (playEntityIsMoving(entity) || entity.action === 'move') return 'move';
@@ -9467,8 +10141,21 @@
     const direction = playEntityDirection(entity, target);
     setSpriteActorFrame(mesh, action, direction);
     actor.sprite.position.y = 0.015 + (playEntityIsMoving(entity) ? Math.sin((entity.movePhase || 0) * 2) * 0.025 : 0);
-    actor.material.opacity = entity.hp === 0 ? 0.55 : 1;
-    actor.material.color.setHex(entity.hitFlash > 0 ? 0xfff4dd : 0xffffff);
+    actor.material.opacity = entity.hp === 0 ? 0.48 : 1;
+    let baseColor = 0xffffff;
+    if (entity.hitFlash > 0) baseColor = 0xfff4dd;
+    if ((entity.specialFlash || 0) > 0) baseColor = 0xffe066; // golden special flash
+    actor.material.color.setHex(baseColor);
+
+    // Slight fallen tilt for defeated units
+    if (entity.hp === 0) {
+      actor.sprite.rotation.z = (entity.facing === 'left' || entity.facing === 'right') ? 0.35 : 0.12;
+    } else {
+      actor.sprite.rotation.z = 0;
+    }
+
+    // Decay special flash
+    if (entity.specialFlash > 0) entity.specialFlash -= 0.08;
     return true;
   }
 
@@ -9623,26 +10310,50 @@
   }
 
   function syncPlayMeshes() {
-    if (!playMode.active || !playMode.player || !playMode.villain) return;
-    const playerPos = playWorldPosition(playMode.player);
-    const villainPos = playWorldPosition(playMode.villain);
-    if (playMode.playerMesh) {
+    if (!playMode.active) return;
+
+    // Sync all party members (multi-unit support)
+    if (playMode.party && playMode.partyMeshes) {
+      playMode.party.forEach((member, idx) => {
+        const mesh = playMode.partyMeshes[idx];
+        if (!mesh) return;
+        const pos = playWorldPosition(member);
+        mesh.position.copy(pos);
+
+        const isSelected = idx === (playMode.selectedPartyIndex || 0);
+        const targetForFacing = playMode.villain && playMode.villain.hp > 0 ? playMode.villain : null;
+
+        const spriteDriven = updateSpriteActorForPlay(mesh, member.spriteRole || 'hero', member, targetForFacing);
+        if (!spriteDriven) {
+          mesh.rotation.y = playEntityFacingAngle(member, targetForFacing);
+          // Fallback animation if needed
+        }
+
+        const base = isSelected ? 1.04 : 1.0;
+        let flash = (member.hitFlash > 0 ? 1.12 : 1.0) * base;
+        if ((member.specialFlash || 0) > 0) flash *= 1.18;
+        mesh.scale.setScalar(flash);
+        mesh.visible = true;
+      });
+    } else if (playMode.playerMesh && playMode.player) {
+      // Legacy fallback
+      const playerPos = playWorldPosition(playMode.player);
       playMode.playerMesh.position.copy(playerPos);
-      const spriteDriven = updateSpriteActorForPlay(playMode.playerMesh, 'hero', playMode.player, playMode.player.slashTimer > 0 ? playMode.villain : null);
+      const spriteDriven = updateSpriteActorForPlay(playMode.playerMesh, 'hero', playMode.player, playMode.villain);
       if (!spriteDriven) {
-        playMode.playerMesh.rotation.y = playEntityFacingAngle(playMode.player, playMode.player.slashTimer > 0 ? playMode.villain : null);
-        animateHeroMesh(playMode.playerMesh, playMode.player);
+        playMode.playerMesh.rotation.y = playEntityFacingAngle(playMode.player, playMode.villain);
       }
       const flash = playMode.player.hitFlash > 0 ? 1.08 : 1;
       playMode.playerMesh.scale.setScalar(flash);
     }
-    if (playMode.villainMesh) {
+
+    if (playMode.villainMesh && playMode.villain) {
+      const villainPos = playWorldPosition(playMode.villain);
       playMode.villainMesh.position.copy(villainPos);
       playMode.villainMesh.visible = true;
       const spriteDriven = updateSpriteActorForPlay(playMode.villainMesh, 'villain', playMode.villain, playMode.player);
       if (!spriteDriven) {
         playMode.villainMesh.rotation.y = playEntityFacingAngle(playMode.villain, playMode.player);
-        animateVillainMesh(playMode.villainMesh, playMode.villain);
       }
       const flash = playMode.villain.hitFlash > 0 ? 1.10 : 1;
       playMode.villainMesh.scale.setScalar(flash);
@@ -9686,66 +10397,229 @@
   }
 
   function updatePlayHud() {
-    if (!playHud.root || !playMode.player || !playMode.villain) return;
-    const playerHp = Math.max(0, playMode.player.hp);
-    const villainHp = Math.max(0, playMode.villain.hp);
-    if (playHud.hp) playHud.hp.textContent = playerHp + '/' + PLAY_PLAYER_MAX_HP;
-    if (playHud.villainHp) playHud.villainHp.textContent = villainHp + '/' + PLAY_VILLAIN_MAX_HP;
-    if (playHud.hpBar) playHud.hpBar.style.width = (playerHp / PLAY_PLAYER_MAX_HP * 100).toFixed(0) + '%';
-    if (playHud.villainBar) playHud.villainBar.style.width = (villainHp / PLAY_VILLAIN_MAX_HP * 100).toFixed(0) + '%';
-    if (playHud.title) {
-      playHud.title.textContent = playMode.result === 'won' ? 'World Cleared' :
-        playMode.result === 'lost' ? 'Defeated' :
-        playMode.turn === 'enemy' ? 'Enemy Turn' : 'Player Turn';
+    if (!playHud.root) return;
+
+    const actor = getCurrentActor() || playMode.player;
+    if (!actor) return;
+
+    // Show the currently selected actor's HP (multi-unit aware)
+    const curHp = Math.max(0, actor.hp);
+    const curMax = actor.maxHp || PLAY_PLAYER_MAX_HP;
+    if (playHud.hp) playHud.hp.textContent = `${curHp}/${curMax}`;
+    if (playHud.hpBar) playHud.hpBar.style.width = (curHp / curMax * 100).toFixed(0) + '%';
+
+    // Villain / first living enemy HP
+    const enemy = (playMode.enemies && playMode.enemies.find(e => e && e.hp > 0)) || playMode.villain;
+    if (enemy && playHud.villainHp) {
+      const vHp = Math.max(0, enemy.hp);
+      const vMax = enemy.maxHp || PLAY_VILLAIN_MAX_HP;
+      playHud.villainHp.textContent = `${vHp}/${vMax}`;
+      if (playHud.villainBar) playHud.villainBar.style.width = (vHp / vMax * 100).toFixed(0) + '%';
     }
+
+    // Title shows selected actor name when in multi-unit mode
+    if (playHud.title) {
+      const actorName = actor.name || 'Hero';
+      const baseTitle = playMode.result === 'won' ? 'Victory' :
+        playMode.result === 'lost' ? 'Defeated' :
+        playMode.turn === 'enemy' ? 'Enemy Turn' : 'Your Turn';
+
+      let titleText = (playMode.party && playMode.party.length > 1)
+        ? `${baseTitle} — ${actorName}`
+        : baseTitle;
+
+      // Compact party status (very useful when switching between 1/2/3)
+      if (playMode.party && playMode.party.length > 1) {
+        const partyHp = playMode.party
+          .map(m => m.hp > 0 ? `${m.name[0]}:${m.hp}` : '')
+          .filter(Boolean)
+          .join(' ');
+        if (partyHp) titleText += `  [${partyHp}]`;
+      }
+      playHud.title.textContent = titleText;
+    }
+
     if (playHud.objective) {
       playHud.objective.textContent = playObjectiveText();
     }
+
     if (playHud.style) {
-      const style = playMode.player.fightingStyle || 'Vanguard';
-      const speed = (playMode.player.moveSpeed || PLAY_PLAYER_SPEED).toFixed(2).replace(/\.00$/, '');
+      const actor = getCurrentActor() || playMode.player;
+      const style = actor.fightingStyle || actor.name || 'Unit';
+      const speed = (actor.moveSpeed || PLAY_PLAYER_SPEED).toFixed(2).replace(/\.00$/, '');
       const actionLabel = playHasActiveMovement() ? 'Moving through path' :
         playMode.selectedAction === 'slash' ? 'Choose target' :
         playMode.selectedAction === 'dash' ? 'Choose dash tile' : 'Choose move tile';
-      playHud.style.textContent = style + ' · Move ' + playMode.player.moveTiles + ' · Speed ' + speed + ' · ' + actionLabel;
+      let styleText = style + ' · Move ' + (actor.moveTiles || 3) + ' · Speed ' + speed + ' · ' + actionLabel;
+      if (actor.postSpecialBonus) {
+        styleText += ' · Bonus Ready';
+      }
+      playHud.style.textContent = styleText;
     }
     if (playHud.turn) {
-      const turnText = playMode.turn === 'enemy'
+      const actor = getCurrentActor() || playMode.player;
+      let turnText = playMode.turn === 'enemy'
         ? 'Enemy Turn · thinking'
         : 'Player Turn · AP ' + playMode.playerAP + '/' + PLAY_TACTICS_MAX_AP;
+
+      if (actor && actor.specialCooldown > 0.2) {
+        const cd = Math.ceil(actor.specialCooldown * 10) / 10;
+        turnText += `  · Special ${cd.toFixed(1)}s`;
+      }
       playHud.turn.textContent = playMode.result ? '' : turnText;
     }
     if (playHud.attack) {
-      playHud.attack.disabled = playMode.ended || playMode.turn !== 'player' || playHasActiveMovement() || playMode.playerAP < PLAY_PLAYER_ACTIONS.slash.cost || playMode.player.cooldown > 0;
-      playHud.attack.classList.toggle('active', playMode.selectedAction === 'slash' || playMode.player.slashTimer > 0);
+      const actor = getCurrentActor() || playMode.player;
+      const spec = getActorAttackSpec(actor);
+      const cost = spec.cost || 1;
+      const onCooldown = (actor.cooldown || 0) > 0;
+      playHud.attack.disabled = playMode.ended || playMode.turn !== 'player' || playHasActiveMovement() || playMode.playerAP < cost || onCooldown;
+      playHud.attack.classList.toggle('active', playMode.selectedAction === 'slash' || (actor.slashTimer || 0) > 0);
+      // Dynamic label for job fantasy + post-special bonus
+      let attackLabel = spec.label || 'Attack';
+      if (actor.postSpecialBonus === 'heavyBash') attackLabel = 'Heavy Bash';
+      else if (actor.postSpecialBonus === 'focusedShot') attackLabel = 'Focus Shot';
+      else if (actor.postSpecialBonus === 'whirlwind') attackLabel = 'Whirlwind';
+      if (playHud.attack) playHud.attack.textContent = attackLabel;
     }
     if (playHud.dash) {
-      playHud.dash.disabled = playMode.ended || playMode.turn !== 'player' || playHasActiveMovement() || playMode.playerAP < PLAY_PLAYER_ACTIONS.dash.cost || playMode.player.dashCooldown > 0;
-      playHud.dash.classList.toggle('active', playMode.selectedAction === 'dash' || playMode.player.dashTimer > 0);
+      const actor = getCurrentActor() || playMode.player;
+      playHud.dash.disabled = playMode.ended || playMode.turn !== 'player' || playHasActiveMovement() || playMode.playerAP < PLAY_PLAYER_ACTIONS.dash.cost || (actor.dashCooldown || 0) > 0;
+      playHud.dash.classList.toggle('active', playMode.selectedAction === 'dash' || (actor.dashTimer || 0) > 0);
     }
     if (playHud.guard) {
-      playHud.guard.disabled = playMode.ended || playMode.turn !== 'player' || playHasActiveMovement() || playMode.playerAP < PLAY_PLAYER_ACTIONS.guard.cost || playMode.player.guardCooldown > 0;
-      playHud.guard.classList.toggle('active', playMode.player.guardTimer > 0);
+      const actor = getCurrentActor() || playMode.player;
+      const job = TACTICAL_JOBS[actor.job] || {};
+      const hasSpecial = !!job.special;
+      const label = hasSpecial ? (job.special === 'volley' ? 'Volley' :
+                                  job.special === 'shieldWall' ? 'Shield Wall' :
+                                  job.special === 'riposte' ? 'Riposte' :
+                                  job.special === 'focus' ? 'Focus' : 'Special') : 'Guard';
+
+      playHud.guard.textContent = label;
+      const cost = hasSpecial ? 2 : PLAY_PLAYER_ACTIONS.guard.cost;
+      playHud.guard.disabled = playMode.ended || playMode.turn !== 'player' || playHasActiveMovement() || playMode.playerAP < cost || (actor.guardCooldown || 0) > 0;
+      playHud.guard.classList.toggle('active', hasSpecial ? (actor.specialTimer || 0) > 0 : (actor.guardTimer || 0) > 0);
     }
     if (playHud.endTurn) {
       playHud.endTurn.disabled = playMode.ended || playMode.turn !== 'player' || playHasActiveMovement();
     }
+    if (playHud.newSkirmish) {
+      const show = !!window._skirmishMode;
+      playHud.newSkirmish.style.display = show ? '' : 'none';
+      playHud.newSkirmish.disabled = playMode.ended || playHasActiveMovement();
+      if (show) playHud.newSkirmish.textContent = 'New Skirmish';
+    }
+    if (playHud.saveSkirmish) {
+      const show = !!window._skirmishMode;
+      playHud.saveSkirmish.style.display = show ? '' : 'none';
+      playHud.saveSkirmish.disabled = playMode.ended || !playMode.active;
+    }
+    if (playHud.loadSkirmish) {
+      const show = !!window._skirmishMode;
+      playHud.loadSkirmish.style.display = show ? '' : 'none';
+      playHud.loadSkirmish.disabled = playMode.ended || !playMode.active;
+    }
+  }
+
+  // Returns a job-specific attack spec for the current actor.
+  // This is the foundation for real FFT-style ability differentiation.
+  function getActorAttackSpec(actor) {
+    const base = actor.actions?.slash || PLAY_PLAYER_ACTIONS.slash;
+    const job = actor.job || 'vanguard';
+    const range = actor.attackRange || base.range || 1.0;
+
+    let label = 'Attack';
+    let damage = base.damage || 1;
+    let cooldown = base.cooldown || 0.38;
+    let special = null;
+
+    if (job === 'archer') {
+      label = 'Shoot';
+      damage = 1;
+      cooldown = 0.28; // slightly faster reload
+      special = 'long-range';
+    } else if (job === 'knight') {
+      label = 'Bash';
+      damage = 2; // stronger hit
+      special = 'heavy';
+    } else if (job === 'monk') {
+      label = 'Strike';
+      damage = 1;
+      cooldown = 0.32;
+      special = 'precise';
+    } else if (job === 'swordsman') {
+      label = 'Flurry';
+      damage = 1;
+      cooldown = 0.22; // faster but same damage (feels swift)
+      special = 'fast';
+    } else if (job === 'agent') {
+      label = 'Strike';
+      damage = 1;
+      special = 'tactical';
+    }
+
+    return {
+      label,
+      range,
+      damage,
+      cost: base.cost || 1,
+      cooldown,
+      duration: base.duration || 0.24,
+      windup: base.windup || 0.08,
+      special
+    };
   }
 
   function tryPlayerAttack() {
-    if (!playMode.active || playMode.ended || !playMode.player || !playMode.villain) return false;
-    const spec = playMode.player.actions.slash;
+    const actor = getCurrentActor();
+    if (!playMode.active || playMode.ended || !actor || !playMode.villain) return false;
+    const spec = getActorAttackSpec(actor);
+    let attackRange = spec.range;
+    if (actor.postSpecialBonus === 'focusedShot') {
+      attackRange += 0.8; // feels like a longer precision shot
+    }
     if (!playCanSpendAP(spec.cost)) return playSelectAction('slash');
-    if (playDistance(playMode.player, playMode.villain) > spec.range || !playHasLineOfSight(playMode.player, playMode.villain)) {
+    if (playDistance(actor, playMode.villain) > attackRange || !playHasLineOfSight(actor, playMode.villain)) {
       return playSelectAction('slash');
     }
-    if (playMode.player.cooldown > 0) return true;
-    playMode.player.cooldown = spec.cooldown;
-    playMode.player.slashTimer = spec.duration;
-    playMode.player.action = 'slash';
+    if (actor.cooldown > 0) return true;
+    actor.cooldown = spec.cooldown;
+    actor.slashTimer = spec.duration;
+    actor.action = 'slash';
     playMode.attackPulse = spec.duration;
-    playFaceToward(playMode.player, playMode.villain);
-    playDamageVillain(spec.damage);
+    playFaceToward(actor, playMode.villain);
+    let dmg = spec.damage;
+    if (actor.nextAttackBonus) {
+      dmg += actor.nextAttackBonus;
+      actor.nextAttackBonus = 0;
+    }
+
+    // Post-Special bonuses
+    if (actor.postSpecialBonus === 'heavyBash') {
+      dmg += 1;
+      actor.postSpecialBonus = null;
+    } else if (actor.postSpecialBonus === 'focused') {
+      actor.hp = Math.min(actor.maxHp || 5, actor.hp + 1);
+      addDamagePopup(actor, '+1 (Focus)', true);
+      actor.postSpecialBonus = null;
+    } else if (actor.postSpecialBonus === 'evasive') {
+      actor.postSpecialBonus = null;
+    } else if (actor.postSpecialBonus === 'focusedShot') {
+      dmg += 1;
+      actor.postSpecialBonus = null;
+    } else if (actor.postSpecialBonus === 'whirlwind') {
+      // Small splash damage to nearby enemies
+      const splashTargets = (playMode.enemies || []).filter(e => e && e.hp > 0 && e !== targetEnemy && playDistance(actor, e) <= 1.6);
+      splashTargets.forEach(t => playDamageVillain(1, t));
+      if (splashTargets.length > 0) {
+        addDamagePopup(actor, 'Whirlwind!', true);
+      }
+      actor.postSpecialBonus = null;
+    }
+
+    const targetEnemy = (playMode.enemies && playMode.enemies.find(e => e && e.hp > 0)) || playMode.villain;
+    playDamageVillain(dmg, targetEnemy);
     syncPlayMeshes();
     updatePlayHud();
     if (!playMode.ended) playSpendAP(spec.cost);
@@ -9753,22 +10627,96 @@
   }
 
   function tryPlayerDash() {
-    if (!playMode.active || playMode.ended || !playMode.player) return false;
+    const actor = getCurrentActor();
+    if (!playMode.active || playMode.ended || !actor) return false;
     if (!playCanSpendAP(PLAY_PLAYER_ACTIONS.dash.cost)) return false;
     return playSelectAction('dash');
   }
 
   function tryPlayerGuard() {
-    if (!playMode.active || playMode.ended || !playMode.player) return false;
+    const actor = getCurrentActor();
+    if (!playMode.active || playMode.ended || !actor) return false;
+
+    const job = TACTICAL_JOBS[actor.job] || {};
+    if (job.special) {
+      return tryPlayerSpecial(actor, job.special);
+    }
+
+    // Normal Guard
     if (!playCanSpendAP(PLAY_PLAYER_ACTIONS.guard.cost)) return false;
-    if (playMode.player.guardCooldown > 0) return true;
-    playMode.player.guardCooldown = PLAY_PLAYER_ACTIONS.guard.cooldown;
-    playMode.player.guardTimer = PLAY_PLAYER_ACTIONS.guard.duration;
-    playMode.player.guarding = true;
-    playMode.player.action = 'guard';
+    if (actor.guardCooldown > 0) return true;
+    actor.guardCooldown = PLAY_PLAYER_ACTIONS.guard.cooldown;
+    actor.guardTimer = PLAY_PLAYER_ACTIONS.guard.duration;
+    actor.guarding = true;
+    actor.action = 'guard';
     if (typeof playSfx === 'function') playSfx('knock', 0.26);
     updatePlayHud();
-    playMode.playerAP = 0;
+    if (actor.ap !== undefined) actor.ap = 0;
+    else playMode.playerAP = 0;
+    playEndPlayerTurn();
+    return true;
+  }
+
+  function tryPlayerSpecial(actor, specialType) {
+    if (!actor || (actor.specialCooldown || 0) > 0) return false;
+
+    const cost = 2;
+    if (!playCanSpendAP(cost)) return false;
+
+    actor.specialCooldown = 2.4;
+    actor.specialTimer = 1.15; // weightier, distinct Special windup
+    actor.slashTimer = 1.15;   // force slash sprite for the full duration
+    actor.action = 'special';
+    actor.specialFlash = 0.75; // strong golden feedback
+    playMode.attackPulse = 0.9; // bigger attack ring flash for Specials
+
+    if (specialType === 'volley' && actor.job === 'archer') {
+      const targets = (playMode.enemies || []).filter(e => e && e.hp > 0);
+      let hitCount = 0;
+      for (let t of targets) {
+        if (playDistance(actor, t) <= 3.8) {
+          playFaceToward(actor, t);
+          const dmg = hitCount === 0 ? 2 : 1; // First hit is strong, second is weaker
+          playDamageVillain(dmg, t);
+          hitCount++;
+          if (hitCount >= 2) break;
+        }
+      }
+      if (hitCount === 0) {
+        const mainTarget = playMode.villain;
+        if (mainTarget && playDistance(actor, mainTarget) <= 3.8) {
+          playFaceToward(actor, mainTarget);
+          playDamageVillain(2, mainTarget);
+        }
+      }
+      if (typeof playSfx === 'function') playSfx('whoosh', 0.65);
+      actor.postSpecialBonus = 'focusedShot'; // next attack has +1 damage
+    } else if (specialType === 'shieldWall' && actor.job === 'knight') {
+      actor.guarding = true;
+      actor.guardTimer = 1.6;
+      actor.postSpecialBonus = 'heavyBash'; // next attack does +1 damage
+      if (typeof playSfx === 'function') playSfx('knock', 0.55);
+    } else if (specialType === 'focus' && actor.job === 'monk') {
+      actor.hp = Math.min(actor.maxHp || 5, (actor.hp || 0) + 1);
+      actor.nextAttackBonus = 1;
+      actor.postSpecialBonus = 'focused'; // next attack heals self slightly
+      if (typeof playSfx === 'function') playSfx('whoosh', 0.4);
+    } else if (specialType === 'riposte' && actor.job === 'swordsman') {
+      actor.riposteReady = true;
+      actor.guardTimer = 1.1;
+      actor.postSpecialBonus = 'whirlwind'; // next attack does small splash to nearby
+      if (typeof playSfx === 'function') playSfx('whoosh', 0.5);
+    } else if (specialType === 'smoke' && actor.job === 'agent') {
+      const retreat = playBestReachableCell(actor, playMode.villain, 3, true);
+      playMoveEntityToTile(actor, retreat, 'dash');
+      actor.guarding = true;
+      actor.guardTimer = 0.75;
+      actor.postSpecialBonus = 'evasive'; // next attack is cheaper
+    }
+
+    syncPlayMeshes();
+    updatePlayHud();
+    if (!playMode.ended) playSpendAP(cost);
     playEndPlayerTurn();
     return true;
   }
@@ -9783,8 +10731,12 @@
 
   function playHandleBoardClick(cell) {
     if (!playIsPlayerTurn() || !cell) return false;
+    const actor = getCurrentActor() || playMode.player;
+    if (!actor) return false;
+
     const targetCell = { x: cell.x, z: cell.z };
     const action = playMode.selectedAction || 'move';
+
     if (action === 'slash') {
       const villainTile = playEntityTile(playMode.villain);
       if (targetCell.x === villainTile.x && targetCell.z === villainTile.z) {
@@ -9792,19 +10744,23 @@
       }
       return playSelectAction('move');
     }
+
     const spec = action === 'dash' ? PLAY_PLAYER_ACTIONS.dash : PLAY_PLAYER_ACTIONS.move;
-    const cells = playReachableCells(playMode.player, spec.range);
+    const cells = playReachableCells(actor, spec.range);
     const villainTile = playEntityTile(playMode.villain);
     if (targetCell.x === villainTile.x && targetCell.z === villainTile.z) return false;
     if (!playCellInList(targetCell, cells) || !playCanSpendAP(spec.cost)) {
       return false;
     }
-    const moved = playMoveEntityToTile(playMode.player, targetCell, action === 'dash' ? 'dash' : 'move');
+
+    const moved = playMoveEntityToTile(actor, targetCell, action === 'dash' ? 'dash' : 'move');
     if (!moved) return false;
+
     if (action === 'dash') {
-      playMode.player.dashCooldown = PLAY_PLAYER_ACTIONS.dash.cooldown;
-      playMode.player.dashTimer = PLAY_PLAYER_ACTIONS.dash.duration;
+      actor.dashCooldown = PLAY_PLAYER_ACTIONS.dash.cooldown;
+      actor.dashTimer = PLAY_PLAYER_ACTIONS.dash.duration;
     }
+
     playMode.selectedAction = 'move';
     updatePlayObjective();
     syncPlayMeshes();
@@ -9814,19 +10770,52 @@
   }
 
   function tickPlayMode(dt) {
-    if (!playMode.active || !playMode.player || !playMode.villain) return;
+    if (!playMode.active) return;
     playMode.time += dt;
-    playMode.player.cooldown = Math.max(0, playMode.player.cooldown - dt);
-    playMode.player.dashCooldown = Math.max(0, playMode.player.dashCooldown - dt);
-    playMode.player.guardCooldown = Math.max(0, playMode.player.guardCooldown - dt);
-    playMode.player.dashTimer = Math.max(0, playMode.player.dashTimer - dt);
-    playMode.player.guardTimer = Math.max(0, playMode.player.guardTimer - dt);
-    playMode.player.slashTimer = Math.max(0, playMode.player.slashTimer - dt);
-    playMode.player.guarding = playMode.player.guardTimer > 0;
-    playMode.villain.cooldown = Math.max(0, playMode.villain.cooldown - dt);
-    playMode.villain.windup = Math.max(0, playMode.villain.windup - dt);
-    playMode.player.hitFlash = Math.max(0, playMode.player.hitFlash - dt);
-    playMode.villain.hitFlash = Math.max(0, playMode.villain.hitFlash - dt);
+
+    // Handle timers for all party members (multi-unit)
+    if (playMode.party && playMode.party.length > 0) {
+      playMode.party.forEach(member => {
+        member.cooldown = Math.max(0, member.cooldown - dt);
+        member.dashCooldown = Math.max(0, member.dashCooldown - dt);
+        member.guardCooldown = Math.max(0, member.guardCooldown - dt);
+        member.dashTimer = Math.max(0, member.dashTimer - dt);
+        member.guardTimer = Math.max(0, member.guardTimer - dt);
+        member.slashTimer = Math.max(0, member.slashTimer - dt);
+        member.guarding = member.guardTimer > 0;
+        member.hitFlash = Math.max(0, member.hitFlash - dt);
+      });
+    } else if (playMode.player) {
+      // Legacy fallback
+      playMode.player.cooldown = Math.max(0, playMode.player.cooldown - dt);
+      playMode.player.dashCooldown = Math.max(0, playMode.player.dashCooldown - dt);
+      playMode.player.guardCooldown = Math.max(0, playMode.player.guardCooldown - dt);
+      playMode.player.dashTimer = Math.max(0, playMode.player.dashTimer - dt);
+      playMode.player.guardTimer = Math.max(0, playMode.player.guardTimer - dt);
+      playMode.player.slashTimer = Math.max(0, playMode.player.slashTimer - dt);
+      playMode.player.guarding = playMode.player.guardTimer > 0;
+      playMode.player.hitFlash = Math.max(0, playMode.player.hitFlash - dt);
+    }
+
+    // Decay timers for all enemies (multi-enemy support)
+    if (playMode.enemies && playMode.enemies.length > 0) {
+      playMode.enemies.forEach(enemy => {
+        if (!enemy) return;
+        enemy.cooldown = Math.max(0, enemy.cooldown - dt);
+        enemy.windup = Math.max(0, enemy.windup - dt);
+        enemy.hitFlash = Math.max(0, enemy.hitFlash - dt);
+        enemy.guardCooldown = Math.max(0, enemy.guardCooldown - dt);
+        enemy.guardTimer = Math.max(0, enemy.guardTimer - dt);
+        enemy.specialCooldown = Math.max(0, enemy.specialCooldown - dt);
+        enemy.specialTimer = Math.max(0, enemy.specialTimer - dt);
+        if (enemy.guardTimer > 0) enemy.guarding = true;
+      });
+    } else if (playMode.villain) {
+      playMode.villain.cooldown = Math.max(0, playMode.villain.cooldown - dt);
+      playMode.villain.windup = Math.max(0, playMode.villain.windup - dt);
+      playMode.villain.hitFlash = Math.max(0, playMode.villain.hitFlash - dt);
+    }
+
     playMode.attackPulse = Math.max(0, playMode.attackPulse - dt);
     tickDamagePopups(dt);
     playAdvanceMovements(dt);
@@ -9871,13 +10860,457 @@
       updatePlayObjective();
     }
 
-    const pos = playWorldPosition(playMode.player);
+    const currentActor = getCurrentActor() || playMode.player;
+    const pos = playWorldPosition(currentActor);
     target.x += (pos.x - target.x) * Math.min(1, dt * 8);
     target.y += (0.12 - target.y) * Math.min(1, dt * 6);
     target.z += (pos.z - target.z) * Math.min(1, dt * 8);
+
+    // Camera softly follows the selected party member (multi-unit support)
+    if (playMode.party && playMode.party.length > 1) {
+      const actor = getCurrentActor();
+      if (actor) {
+        const aPos = playWorldPosition(actor);
+        target.x = target.x * 0.7 + aPos.x * 0.3;
+        target.z = target.z * 0.7 + aPos.z * 0.3;
+      }
+    }
     updateCamera();
     syncPlayMeshes();
     updatePlayHud();
+  }
+
+  function getSkirmishLayout(theme) {
+    const layouts = ['classic', 'chokepoint', 'asymmetric'];
+    const layout = layouts[Math.floor(Math.random() * layouts.length)];
+    const mid = Math.floor(GRID / 2);
+
+    return {
+      type: layout,
+      heroX: 3,
+      enemyX: GRID - 4,
+      midZ: mid,
+      props: []
+    };
+  }
+
+  function startSkirmish() {
+    const theme = worldTheme || 'classic';
+    const layout = getSkirmishLayout(theme);
+
+    // Clear board
+    for (let x = 0; x < GRID; x++) {
+      for (let z = 0; z < GRID; z++) {
+        if (world[x] && world[x][z]) {
+          const c = world[x][z];
+          c.terrain = 'grass';
+          c.kind = null;
+          c.floors = 0;
+          c.buildingType = null;
+          c.extras = [];
+        }
+      }
+    }
+
+    const isChina = theme === 'china';
+    const isJapan = theme === 'japan';
+    const isCity = theme === 'city';
+    const isGrass = theme === 'grassland';
+    const mid = layout.midZ;
+
+    const layoutType = layout.type;
+
+    // Generate terrain based on layout type
+    for (let x = 2; x < GRID - 2; x++) {
+      for (let z = 2; z < GRID - 2; z++) {
+        const dx = x - mid;
+        const dz = z - mid;
+        const dist = Math.hypot(dx, dz);
+
+        if (layoutType === 'chokepoint') {
+          // Strong central corridor with side high ground
+          if (Math.abs(dz) < 3 && x > 4 && x < GRID - 5) {
+            setCell(x, z, { terrain: 'grass', kind: null });
+          } else if (Math.abs(dz) > 5 && dist > 3) {
+            if (isGrass) setCell(x, z, { terrain: 'grass', kind: 'hill', floors: 1 });
+            if (isJapan) setCell(x, z, { terrain: 'grass', kind: 'bamboo', floors: 1 });
+          }
+        } else if (layoutType === 'asymmetric') {
+          // Left side more open, right side has more cover
+          if (x < mid - 1 && Math.random() < 0.3) {
+            if (isGrass) setCell(x, z, { terrain: 'grass', kind: 'hill', floors: 1 });
+          }
+          if (x > mid + 1 && Math.random() < 0.55) {
+            if (isChina) setCell(x, z, { terrain: 'grass', kind: 'paifang' });
+            if (isJapan) setCell(x, z, { terrain: 'grass', kind: 'bamboo', floors: 1 });
+          }
+        } else {
+          // Classic balanced
+          if (dist > 4.5 && dist < 7.2 && Math.random() < 0.55) {
+            if (isGrass) setCell(x, z, { terrain: 'grass', kind: 'hill', floors: 1 });
+            if (isCity) setCell(x, z, { terrain: 'path', kind: 'house', floors: 1, buildingType: 'skyscraper' });
+          }
+        }
+      }
+    }
+
+    // Theme-specific signature props
+    if (isJapan) {
+      setCell(4, mid - 2, { terrain: 'grass', kind: 'sakura' });
+      setCell(GRID - 5, mid + 3, { terrain: 'grass', kind: 'lantern' });
+    }
+    if (isChina) {
+      setCell(5, mid - 1, { terrain: 'grass', kind: 'lion' });
+      setCell(GRID - 5, mid + 2, { terrain: 'grass', kind: 'banner' });
+      if (layoutType === 'chokepoint') setCell(mid, 5, { terrain: 'grass', kind: 'paifang' });
+    }
+    if (isCity) {
+      setCell(3, mid, { terrain: 'path', kind: 'house', floors: 2, buildingType: 'skyscraper' });
+    }
+    if (isGrass && layoutType !== 'chokepoint') {
+      setCell(6, mid + 2, { terrain: 'grass', kind: 'hill', floors: 2 });
+    }
+
+    // Starting positions
+    const heroX = layout.heroX;
+    const enemyX = layout.enemyX;
+    const heroZ = mid;
+    const enemyZ = mid;
+
+    // Virtual markers
+    gameLayer.markers = gameLayer.markers || {};
+    gameLayer.markers.playerSpawn = { x: heroX, z: heroZ - 1 };
+    gameLayer.markers.villainSpawn = { x: enemyX, z: enemyZ + 1 };
+
+    const setup = {
+      player: { x: heroX, z: heroZ - 1 },
+      villain: { x: enemyX, z: enemyZ + 1 },
+      authoredPlayer: { x: heroX, z: heroZ - 1 },
+      authoredVillain: { x: enemyX, z: enemyZ + 1 },
+      objective: 'defeat_villain',
+      markers: gameLayer.markers,
+      patrolPoints: []
+    };
+
+    enterSkirmishPlayMode(setup, theme);
+  }
+
+  function saveSkirmishState() {
+    if (!playMode.active || !window._skirmishMode) return false;
+
+    const state = {
+      version: 1,
+      timestamp: Date.now(),
+      theme: worldTheme,
+      grid: GRID,
+      cells: [],
+      party: playMode.party.map(p => ({
+        id: p.id,
+        name: p.name,
+        job: p.job,
+        x: p.x,
+        z: p.z,
+        hp: p.hp,
+        maxHp: p.maxHp,
+        moveTiles: p.moveTiles,
+        attackRange: p.attackRange,
+        facing: p.facing,
+        ap: p.ap,
+        guarding: p.guarding,
+        personality: p.personality || null,
+        specialCooldown: p.specialCooldown || 0,
+        riposteReady: p.riposteReady || false,
+        nextAttackBonus: p.nextAttackBonus || 0
+      })),
+      enemies: playMode.enemies.map(e => ({
+        id: e.id,
+        name: e.name,
+        job: e.job,
+        x: e.x,
+        z: e.z,
+        hp: e.hp,
+        maxHp: e.maxHp,
+        moveTiles: e.moveTiles,
+        attackRange: e.attackRange,
+        facing: e.facing,
+        personality: e.personality || null,
+        specialCooldown: e.specialCooldown || 0
+      })),
+      turn: playMode.turn,
+      playerAP: playMode.playerAP,
+      enemyAP: playMode.enemyAP,
+      turnCount: playMode.turnCount,
+      objectiveStatus: playMode.objectiveStatus
+    };
+
+    // Serialize cells (only non-default)
+    for (let x = 0; x < GRID; x++) {
+      for (let z = 0; z < GRID; z++) {
+        const c = world[x] && world[x][z];
+        if (c && (c.kind || c.terrain !== 'grass' || c.floors > 0 || c.buildingType)) {
+          state.cells.push({
+            x, z,
+            terrain: c.terrain,
+            kind: c.kind,
+            floors: c.floors || 0,
+            buildingType: c.buildingType || null
+          });
+        }
+      }
+    }
+
+    try {
+      localStorage.setItem('tinyworld:skirmish:last', JSON.stringify(state));
+      return true;
+    } catch (e) {
+      console.warn('Failed to save skirmish:', e);
+      return false;
+    }
+  }
+
+  function loadSkirmishState() {
+    try {
+      const raw = localStorage.getItem('tinyworld:skirmish:last');
+      if (!raw) return false;
+
+      const state = JSON.parse(raw);
+      if (!state || !state.party || !state.enemies) return false;
+
+      // Restore theme and grid if different
+      if (state.theme && state.theme !== worldTheme) {
+        setWorldTheme(state.theme, { silent: true });
+      }
+
+      // Restore cells
+      for (let x = 0; x < GRID; x++) {
+        for (let z = 0; z < GRID; z++) {
+          if (world[x] && world[x][z]) {
+            const c = world[x][z];
+            c.terrain = 'grass';
+            c.kind = null;
+            c.floors = 0;
+            c.buildingType = null;
+            c.extras = [];
+          }
+        }
+      }
+
+      state.cells.forEach(cellData => {
+        const { x, z, terrain, kind, floors, buildingType } = cellData;
+        if (world[x] && world[x][z]) {
+          setCell(x, z, {
+            terrain: terrain || 'grass',
+            kind: kind || null,
+            floors: floors || 0,
+            buildingType: buildingType || null
+          });
+        }
+      });
+
+      // Re-enter skirmish play mode with restored state
+      window._skirmishMode = true;
+
+      // Rebuild tactical entities from saved data
+      const newParty = state.party.map(p => {
+        const ent = createTacticalEntity({
+          id: p.id, name: p.name, job: p.job,
+          x: p.x, z: p.z, theme: state.theme, spriteRole: 'hero'
+        });
+        ent.hp = p.hp;
+        ent.maxHp = p.maxHp;
+        ent.moveTiles = p.moveTiles;
+        ent.attackRange = p.attackRange;
+        ent.facing = p.facing;
+        ent.ap = p.ap;
+        ent.guarding = p.guarding;
+        ent.personality = p.personality;
+        ent.specialCooldown = p.specialCooldown || 0;
+        ent.riposteReady = p.riposteReady || false;
+        ent.nextAttackBonus = p.nextAttackBonus || 0;
+        return ent;
+      });
+
+      const newEnemies = state.enemies.map(e => {
+        const ent = createTacticalEntity({
+          id: e.id, name: e.name, job: e.job,
+          x: e.x, z: e.z, theme: state.theme, spriteRole: 'villain', isEnemy: true
+        });
+        ent.hp = e.hp;
+        ent.maxHp = e.maxHp;
+        ent.moveTiles = e.moveTiles;
+        ent.attackRange = e.attackRange;
+        ent.facing = e.facing;
+        ent.personality = e.personality;
+        ent.specialCooldown = e.specialCooldown || 0;
+        return ent;
+      });
+
+      // Clear current play pieces and restart with saved data
+      clearPlayPieces();
+
+      playMode.party = newParty;
+      playMode.enemies = newEnemies;
+      playMode.player = newParty[0];
+      playMode.villain = newEnemies[0];
+
+      playMode.partyMeshes = newParty.map((member, i) => makeHeroCharacter({
+        name: member.name + 'Mesh', theme: member.theme, scale: i === 0 ? 1.0 : 0.92
+      }));
+      playMode.playerMesh = playMode.partyMeshes[0];
+      playMode.villainMesh = makeVillainPawn();
+      playMode.enemyMeshes = [playMode.villainMesh];
+      playMode.attackMesh = makeAttackRing();
+      playMode.guardMesh = makeGuardBubble();
+      playMode.hitSparkMesh = makeHitSpark();
+      playMode.damagePopups = [];
+      playMode.moveMesh = makeMoveRangeMesh();
+
+      playMode.turn = state.turn || 'player';
+      playMode.playerAP = state.playerAP || PLAY_TACTICS_MAX_AP;
+      playMode.enemyAP = state.enemyAP || PLAY_TACTICS_MAX_AP;
+      playMode.turnCount = state.turnCount || 1;
+      playMode.objectiveStatus = state.objectiveStatus || 'Skirmish Battle';
+
+      playGroup.visible = true;
+      playOverlayGroup.visible = true;
+
+      renderAll();
+      syncPlayMeshes();
+      updatePlayHud();
+      updateCamera();
+
+      return true;
+    } catch (e) {
+      console.warn('Failed to load skirmish:', e);
+      return false;
+    }
+  }
+
+  function enterSkirmishPlayMode(setup, theme) {
+    // Similar to enterPlayMode but skips marker validation and forces 3v2
+    const keepBackup = false;
+    if (!keepBackup) {
+      playMode.cameraBackup = {
+        viewSize,
+        cameraMode,
+        azimuth,
+        polar,
+        target: target.clone(),
+      };
+    }
+    clearPlayPieces();
+    playMode.active = true;
+    playMode.ended = false;
+    playMode.result = null;
+    playMode.time = 0;
+    playMode.attackPulse = 0;
+    playMode.turn = 'player';
+    playMode.turnCount = 1;
+    playMode.playerAP = PLAY_TACTICS_MAX_AP;
+    playMode.enemyAP = PLAY_TACTICS_MAX_AP;
+    playMode.selectedAction = 'move';
+    playMode.enemyTurnTimer = 0;
+    playMode.pendingTurnEnd = false;
+    playMode.enemyPendingAttack = false;
+    playMode.enemyTurnDoneAfterMove = false;
+    playMode.activePath = null;
+    playMode.activePathAction = 'move';
+    playMode.objective = setup.objective || 'defeat_villain';
+    playMode.objectiveStatus = 'Skirmish Battle';
+    window._skirmishMode = true;
+    playMode.collectedRelic = false;
+    playMode.gateUnlocked = false;
+    playMode.npcLine = '';
+    playMode.markers = setup.markers;
+
+    const japanTheme = theme === 'japan';
+    const cityTheme = theme === 'city';
+    const grasslandTheme = theme === 'grassland';
+    const chinaTheme = theme === 'china';
+
+    // 3v2 party
+    playMode.party = [
+      createTacticalEntity({
+        id: 'hero', name: chinaTheme ? 'Swordsman' : (grasslandTheme ? 'Knight' : (cityTheme ? 'Agent' : (japanTheme ? 'Samurai' : 'Hero'))),
+        job: chinaTheme ? 'swordsman' : (grasslandTheme ? 'knight' : (cityTheme ? 'agent' : (japanTheme ? 'samurai' : 'vanguard'))),
+        x: setup.player.x, z: setup.player.z, theme, spriteRole: 'hero', facing: 'right'
+      })
+    ];
+
+    if (japanTheme || cityTheme || grasslandTheme || chinaTheme) {
+      const companions = japanTheme ? ['Acolyte', 'Monk'] : cityTheme ? ['Hacker', 'Enforcer'] : grasslandTheme ? ['Squire', 'Archer'] : ['Monk', 'Guard'];
+      const jobs = japanTheme ? ['vanguard', 'vanguard'] : cityTheme ? ['vanguard', 'vanguard'] : grasslandTheme ? ['vanguard', 'archer'] : ['monk', 'swordsman'];
+      playMode.party.push(createTacticalEntity({ id: 'c1', name: companions[0], job: jobs[0], x: setup.player.x, z: setup.player.z - 1, theme, spriteRole: 'hero', facing: 'right' }));
+      playMode.party.push(createTacticalEntity({ id: 'c2', name: companions[1], job: jobs[1], x: setup.player.x, z: setup.player.z + 1, theme, spriteRole: 'hero', facing: 'right' }));
+    }
+
+    playMode.enemies = [
+      createTacticalEntity({
+        id: 'e1', name: chinaTheme ? 'Warlord' : (grasslandTheme ? 'Warlord' : (cityTheme ? 'Corporate' : 'Ronin')),
+        job: chinaTheme ? 'hexblade' : (grasslandTheme ? 'hexblade' : (cityTheme ? 'hexblade' : 'ronin')),
+        x: setup.villain.x, z: setup.villain.z, theme, spriteRole: 'villain', isEnemy: true, facing: 'left'
+      })
+    ];
+
+    // Second enemy with personality + good job variety
+    let e2Job = 'hexblade';
+    let e2Name = chinaTheme ? 'Enforcer' : (grasslandTheme ? 'Bandit' : (cityTheme ? 'Assassin' : 'Ronin'));
+
+    const roll = Math.random();
+    if (grasslandTheme) {
+      if (roll < 0.35) { e2Job = 'archer'; e2Name = 'Ranger'; }
+      else if (roll < 0.55) { e2Job = 'knight'; e2Name = 'Mercenary'; }
+    } else if (chinaTheme) {
+      if (roll < 0.4) { e2Job = 'monk'; e2Name = 'Temple Guard'; }
+      else if (roll < 0.6) { e2Job = 'swordsman'; e2Name = 'Blademaster'; }
+    } else if (japanTheme) {
+      if (roll < 0.45) { e2Job = 'ronin'; e2Name = 'Ronin'; }
+    } else if (cityTheme) {
+      if (roll < 0.35) { e2Job = 'agent'; e2Name = 'Operative'; }
+    }
+
+    const e2 = createTacticalEntity({
+      id: 'e2', name: e2Name, job: e2Job,
+      x: setup.villain.x, z: setup.villain.z - 2, theme, spriteRole: 'villain', isEnemy: true, facing: 'left'
+    });
+
+    // Personality assignment with job awareness
+    if (chinaTheme) e2.personality = (e2Job === 'monk' ? 'support' : 'aggressive');
+    else if (grasslandTheme) e2.personality = (e2Job === 'archer' ? 'hitrun' : 'defensive');
+    else if (cityTheme) e2.personality = 'hitrun';
+    else e2.personality = 'aggressive';
+
+    playMode.enemies.push(e2);
+
+    playMode.player = playMode.party[0];
+    playMode.villain = playMode.enemies[0];
+
+    playMode.partyMeshes = playMode.party.map((member, i) => makeHeroCharacter({ name: member.name + 'Mesh', theme: member.theme, scale: i === 0 ? 1.0 : 0.92 }));
+    playMode.playerMesh = playMode.partyMeshes[0];
+    playMode.villainMesh = makeVillainPawn();
+    playMode.enemyMeshes = [playMode.villainMesh];
+    playMode.attackMesh = makeAttackRing();
+    playMode.guardMesh = makeGuardBubble();
+    playMode.hitSparkMesh = makeHitSpark();
+    playMode.damagePopups = [];
+    playMode.moveMesh = makeMoveRangeMesh();
+
+    playGroup.visible = true;
+    playOverlayGroup.visible = true;
+    playMode.objectiveStatus = 'Skirmish – Defeat both enemies';
+
+    renderAll();
+    syncPlayMeshes();
+    updatePlayHud();
+    updateCamera();
+
+    // Nice starting camera for skirmish
+    setTimeout(() => {
+      polar = DEFAULT_POLAR + 0.35;
+      updateCamera();
+    }, 80);
+
+    if (typeof playSfx === 'function') playSfx('whoosh', 0.7);
   }
 
   function enterPlayMode(opts) {
@@ -9919,62 +11352,170 @@
     playMode.gateUnlocked = false;
     playMode.npcLine = '';
     playMode.markers = setup.markers;
-    playMode.player = {
-      x: setup.player.x,
-      z: setup.player.z,
-      renderX: setup.player.x,
-      renderZ: setup.player.z,
-      authoredX: setup.authoredPlayer.x,
-      authoredZ: setup.authoredPlayer.z,
-      hp: PLAY_PLAYER_MAX_HP,
-      moveSpeed: PLAY_PLAYER_SPEED,
-      moveTiles: 3,
-      fightingStyle: 'Vanguard',
-      actions: PLAY_PLAYER_ACTIONS,
-      cooldown: 0,
-      dashCooldown: 0,
-      guardCooldown: 0,
-      dashTimer: 0,
-      guardTimer: 0,
-      slashTimer: 0,
-      action: 'idle',
-      movePhase: 0,
-      guarding: false,
-      hitFlash: 0,
-      dirX: 0,
-      dirZ: -1,
-      facing: 'front',
-    };
-    playMode.villain = {
-      x: setup.villain.x,
-      z: setup.villain.z,
-      renderX: setup.villain.x,
-      renderZ: setup.villain.z,
-      authoredX: setup.authoredVillain.x,
-      authoredZ: setup.authoredVillain.z,
-      spawnX: setup.villain.x,
-      spawnZ: setup.villain.z,
-      hp: PLAY_VILLAIN_MAX_HP,
-      moveSpeed: PLAY_VILLAIN_SPEED,
-      moveTiles: 2,
-      fightingStyle: 'Hexblade',
-      actions: PLAY_VILLAIN_ACTIONS,
-      cooldown: 0.45,
-      hitFlash: 0,
-      state: 'patrol',
-      windup: 0,
-      pendingStrike: false,
-      guarding: false,
-      patrolIndex: 0,
-      patrolPoints: setup.patrolPoints,
-      dirX: -1,
-      dirZ: 0,
-      facing: 'left',
-    };
+
+    // New multi-unit tactical model (Sprint 1 foundation)
+    const japanTheme = worldTheme === 'japan';
+    const cityTheme = worldTheme === 'city';
+    const grasslandTheme = worldTheme === 'grassland';
+    const chinaTheme = worldTheme === 'china';
+
+    playMode.party = [
+      createTacticalEntity({
+        id: 'hero',
+        name: chinaTheme ? 'Swordsman' : (grasslandTheme ? 'Knight' : (cityTheme ? 'Agent' : (japanTheme ? 'Samurai' : 'Hero'))),
+        job: chinaTheme ? 'vanguard' : (grasslandTheme ? 'vanguard' : (cityTheme ? 'vanguard' : (japanTheme ? 'samurai' : 'vanguard'))),
+        x: setup.player.x,
+        z: setup.player.z,
+        theme: worldTheme,
+        spriteRole: 'hero',
+        facing: 'front',
+      }),
+    ];
+
+    // Japan: 3-unit party (Samurai + Acolyte + Monk)
+    if (japanTheme) {
+      playMode.party.push(createTacticalEntity({
+        id: 'companion1', name: 'Acolyte', job: 'vanguard',
+        x: Math.max(0, setup.player.x - 1), z: setup.player.z,
+        theme: 'japan', spriteRole: 'hero', facing: 'front',
+      }));
+      playMode.party.push(createTacticalEntity({
+        id: 'companion2', name: 'Monk', job: 'vanguard',
+        x: Math.max(0, setup.player.x + 1), z: setup.player.z,
+        theme: 'japan', spriteRole: 'hero', facing: 'front',
+      }));
+    }
+
+    // City: 3-unit modern team (Agent + Hacker + Enforcer)
+    if (cityTheme) {
+      playMode.party.push(createTacticalEntity({
+        id: 'companion1', name: 'Hacker', job: 'vanguard',
+        x: Math.max(0, setup.player.x - 1), z: setup.player.z,
+        theme: 'city', spriteRole: 'hero', facing: 'front',
+      }));
+      playMode.party.push(createTacticalEntity({
+        id: 'companion2', name: 'Enforcer', job: 'vanguard',
+        x: Math.max(0, setup.player.x + 1), z: setup.player.z,
+        theme: 'city', spriteRole: 'hero', facing: 'front',
+      }));
+    }
+
+    // Grassland: 3-unit knightly party (Knight + Squire + Archer)
+    if (grasslandTheme) {
+      playMode.party.push(createTacticalEntity({
+        id: 'companion1', name: 'Squire', job: 'vanguard',
+        x: Math.max(0, setup.player.x - 1), z: setup.player.z,
+        theme: 'grassland', spriteRole: 'hero', facing: 'front',
+      }));
+      playMode.party.push(createTacticalEntity({
+        id: 'companion2', name: 'Archer', job: 'vanguard',
+        x: Math.max(0, setup.player.x + 1), z: setup.player.z,
+        theme: 'grassland', spriteRole: 'hero', facing: 'front',
+      }));
+    }
+
+    // China: 3-unit wuxia party (Swordsman + Monk + Imperial Guard)
+    if (chinaTheme) {
+      playMode.party.push(createTacticalEntity({
+        id: 'companion1', name: 'Monk', job: 'vanguard',
+        x: Math.max(0, setup.player.x - 1), z: setup.player.z,
+        theme: 'china', spriteRole: 'hero', facing: 'front',
+      }));
+      playMode.party.push(createTacticalEntity({
+        id: 'companion2', name: 'Guard', job: 'vanguard',
+        x: Math.max(0, setup.player.x + 1), z: setup.player.z,
+        theme: 'china', spriteRole: 'hero', facing: 'front',
+      }));
+    }
+
+    playMode.enemies = [
+      createTacticalEntity({
+        id: 'villain',
+        name: chinaTheme ? 'Warlord' : (grasslandTheme ? 'Warlord' : (cityTheme ? 'Corporate' : (japanTheme ? 'Ronin' : 'Villain'))),
+        job: chinaTheme ? 'hexblade' : (grasslandTheme ? 'hexblade' : (cityTheme ? 'hexblade' : (japanTheme ? 'ronin' : 'hexblade'))),
+        x: setup.villain.x, z: setup.villain.z,
+        theme: worldTheme, spriteRole: 'villain', isEnemy: true, facing: 'left',
+      }),
+    ];
+
+    // Japan: second Ronin (aggressive personality)
+    if (japanTheme) {
+      const offX = Math.min(GRID - 1, Math.max(0, setup.villain.x + 2));
+      const offZ = Math.min(GRID - 1, Math.max(0, setup.villain.z - 1));
+      const e = createTacticalEntity({
+        id: 'enemy2', name: 'Ronin', job: 'ronin',
+        x: offX, z: offZ, theme: 'japan', spriteRole: 'villain', isEnemy: true, facing: 'left',
+      });
+      e.personality = 'aggressive';
+      playMode.enemies.push(e);
+    }
+
+    // City: second corporate assassin (hit-and-run)
+    if (cityTheme) {
+      const offX = Math.min(GRID - 1, Math.max(0, setup.villain.x + 2));
+      const offZ = Math.min(GRID - 1, Math.max(0, setup.villain.z - 1));
+      const e = createTacticalEntity({
+        id: 'enemy2', name: 'Assassin', job: 'hexblade',
+        x: offX, z: offZ, theme: 'city', spriteRole: 'villain', isEnemy: true, facing: 'left',
+      });
+      e.personality = 'hitrun';
+      playMode.enemies.push(e);
+    }
+
+    // Grassland: second warband enemy (defensive Bandit)
+    if (grasslandTheme) {
+      const offX = Math.min(GRID - 1, Math.max(0, setup.villain.x + 2));
+      const offZ = Math.min(GRID - 1, Math.max(0, setup.villain.z - 1));
+      const e = createTacticalEntity({
+        id: 'enemy2', name: 'Bandit', job: 'hexblade',
+        x: offX, z: offZ, theme: 'grassland', spriteRole: 'villain', isEnemy: true, facing: 'left',
+      });
+      e.personality = 'defensive';
+      playMode.enemies.push(e);
+    }
+
+    // China: second imperial enforcer (supportive)
+    if (chinaTheme) {
+      const offX = Math.min(GRID - 1, Math.max(0, setup.villain.x + 2));
+      const offZ = Math.min(GRID - 1, Math.max(0, setup.villain.z - 1));
+      const e = createTacticalEntity({
+        id: 'enemy2', name: 'Enforcer', job: 'hexblade',
+        x: offX, z: offZ, theme: 'china', spriteRole: 'villain', isEnemy: true, facing: 'left',
+      });
+      e.personality = 'support';
+      playMode.enemies.push(e);
+    }
+
+    // Legacy aliases for current code (will be removed gradually)
+    playMode.player = playMode.party[0];
+    playMode.villain = playMode.enemies[0];
+
+    // Preserve authored positions for marker resolution
+    playMode.player.authoredX = setup.authoredPlayer.x;
+    playMode.player.authoredZ = setup.authoredPlayer.z;
+    playMode.villain.authoredX = setup.authoredVillain.x;
+    playMode.villain.authoredZ = setup.authoredVillain.z;
+    playMode.villain.spawnX = setup.villain.x;
+    playMode.villain.spawnZ = setup.villain.z;
+    playMode.villain.patrolPoints = setup.patrolPoints || [];
+    playMode.villain.state = 'patrol';
+    playMode.villain.patrolIndex = 0;
     playFaceToward(playMode.player, playMode.villain);
     playFaceToward(playMode.villain, playMode.player);
-    playMode.playerMesh = makePlayerPawn();
+    // Create meshes for all party members (multi-unit)
+    playMode.partyMeshes = playMode.party.map(member => {
+      const isMain = member.id === 'hero';
+      return makeHeroCharacter({
+        name: member.name + 'Mesh',
+        theme: member.theme,
+        scale: isMain ? 1.0 : 0.92
+      });
+    });
+    playMode.playerMesh = playMode.partyMeshes[0] || makePlayerPawn(); // legacy
+
     playMode.villainMesh = makeVillainPawn();
+    // For future: support multiple enemy meshes too
+    playMode.enemyMeshes = [playMode.villainMesh];
     playMode.attackMesh = makeAttackRing();
     playMode.guardMesh = makeGuardBubble();
     playMode.hitSparkMesh = makeHitSpark();
@@ -9988,7 +11529,8 @@
     viewSize = Math.max(4.6, Math.min(7.2, GRID * 0.45));
     azimuth = DEFAULT_AZIMUTH;
     polar = Math.PI * 0.30;
-    const playerPos = playWorldPosition(playMode.player);
+    const initialActor = getCurrentActor() || playMode.player;
+    const playerPos = playWorldPosition(initialActor);
     target.set(playerPos.x, 0.12, playerPos.z);
     setCameraMode(postProcessingEnabled ? 'ortho' : 'soft');
     document.body.classList.add('play-mode');
@@ -10030,6 +11572,7 @@
     playGroup.visible = false;
     playOverlayGroup.visible = false;
     clearTacticsOverlay();
+    window._skirmishMode = false;
     clearPlayPieces();
     playMode.player = null;
     playMode.villain = null;
@@ -10102,6 +11645,21 @@
       e.preventDefault();
       return true;
     }
+    if (e.key === 'Tab') {
+      selectNextPartyMember();
+      e.preventDefault();
+      return true;
+    }
+    // Number keys 1-3 to directly select party members (future-proofing)
+    if (['1','2','3'].includes(k) && playMode.party && playMode.party.length > 1) {
+      const idx = parseInt(k, 10) - 1;
+      if (idx < playMode.party.length) {
+        playMode.selectedPartyIndex = idx;
+        playMode.selectedAction = 'move';
+        e.preventDefault();
+        return true;
+      }
+    }
     return true;
   }
 
@@ -10127,6 +11685,34 @@
   if (playHud.guard) playHud.guard.addEventListener('click', tryPlayerGuard);
   if (playHud.endTurn) playHud.endTurn.addEventListener('click', tryPlayerEndTurn);
   if (playHud.reset) playHud.reset.addEventListener('click', restartPlayMode);
+  if (playHud.newSkirmish) playHud.newSkirmish.addEventListener('click', () => {
+    if (window._skirmishMode) startSkirmish();
+  });
+  if (playHud.saveSkirmish) playHud.saveSkirmish.addEventListener('click', () => {
+    if (window._skirmishMode && saveSkirmishState()) {
+      if (playHud.saveSkirmish) playHud.saveSkirmish.textContent = 'Saved!';
+      setTimeout(() => {
+        if (playHud.saveSkirmish) playHud.saveSkirmish.textContent = 'Save';
+      }, 1200);
+    }
+  });
+  if (playHud.loadSkirmish) playHud.loadSkirmish.addEventListener('click', () => {
+    if (window._skirmishMode && loadSkirmishState()) {
+      if (playHud.loadSkirmish) {
+        const originalText = playHud.loadSkirmish.textContent;
+        playHud.loadSkirmish.textContent = 'Loaded!';
+        setTimeout(() => {
+          if (playHud.loadSkirmish) playHud.loadSkirmish.textContent = originalText;
+        }, 1100);
+      }
+    } else if (playHud.loadSkirmish) {
+      const originalText = playHud.loadSkirmish.textContent;
+      playHud.loadSkirmish.textContent = 'No Save';
+      setTimeout(() => {
+        if (playHud.loadSkirmish) playHud.loadSkirmish.textContent = originalText;
+      }, 900);
+    }
+  });
   if (playHud.exit) playHud.exit.addEventListener('click', () => exitPlayMode());
   if (adventurePanel.objective) adventurePanel.objective.addEventListener('change', () => {
     setGameObjective(adventurePanel.objective.value);
@@ -10148,6 +11734,22 @@
     loadThemePreset(next);
   });
   if (adventurePanel.play) adventurePanel.play.addEventListener('click', () => enterPlayMode());
+  if (adventurePanel.skirmish) adventurePanel.skirmish.addEventListener('click', () => startSkirmish());
+  if (adventurePanel.save) adventurePanel.save.addEventListener('click', () => {
+    suppressSave = false;
+    saveState();
+    const btn = adventurePanel.save;
+    if (btn) {
+      const orig = btn.textContent;
+      btn.textContent = 'Saved!';
+      setTimeout(() => { if (btn) btn.textContent = orig; }, 1100);
+    }
+  });
+  if (adventurePanel.load) adventurePanel.load.addEventListener('click', () => {
+    if (confirm('Reload last saved board from browser storage?')) {
+      location.reload();
+    }
+  });
   updateAdventurePanel();
 
   window.render_game_to_text = function renderGameToText() {
@@ -11309,7 +12911,7 @@
       },
       kind: {
         type: ['string', 'null'],
-        enum: [null, 'house', 'tree', 'fence', 'rock', 'hill', 'bridge', 'sakura', 'bamboo', 'lantern', 'torii', 'crop', 'corn', 'wheat', 'pumpkin', 'carrot', 'sunflower', 'tuft'],
+        enum: [null, 'house', 'tree', 'fence', 'rock', 'hill', 'bridge', 'sakura', 'bamboo', 'lantern', 'torii', 'campfire', 'lion', 'banner', 'paifang', 'crop', 'corn', 'wheat', 'pumpkin', 'carrot', 'sunflower', 'tuft'],
       },
       floors: {
         type: 'integer',
@@ -11457,7 +13059,7 @@
     if (data.worldTheme !== undefined && !WORLD_THEME_IDS.includes(data.worldTheme)) return 'worldTheme invalid: ' + data.worldTheme;
     const gridLimit = HOME_GRID_OPTIONS.includes(data.gridSize) ? data.gridSize : HOME_GRID_MAX;
     const okTerrain = new Set(['grass','path','dirt','water']);
-    const okKind = new Set([null,'house','tree','fence','rock','hill','bridge','sakura','bamboo','lantern','torii','crop','corn','wheat','pumpkin','carrot','sunflower','tuft']);
+    const okKind = new Set([null,'house','tree','fence','rock','hill','bridge','sakura','bamboo','lantern','torii','campfire','lion','banner','paifang','crop','corn','wheat','pumpkin','carrot','sunflower','tuft']);
     const okBT = new Set([null,'cottage','manor','tower','turret','skyscraper','temple','pagoda','watchtower']);
     const okFenceSide = new Set([null,'n','s','e','w','center-x','center-z']);
     const seen = new Set();
